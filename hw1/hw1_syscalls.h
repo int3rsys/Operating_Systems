@@ -1,5 +1,7 @@
 #include <errno.h>
 #include <termios.h>
+#include <sys/types.h>
+
 
 int enable_policy(pid_t pid ,int size, int password){
     int __res;
