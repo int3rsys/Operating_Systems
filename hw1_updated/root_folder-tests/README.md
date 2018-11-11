@@ -6,4 +6,4 @@ compile.sh is a small script that will compile our kernel. reboot after it, if d
 TODO:
 1) Create complete tests for every module
 2) Check there are no memory leaks
-3) Enjoy & Have fun
+3) Check every process is freed if not called upon 'disable_policy'
