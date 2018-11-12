@@ -7,3 +7,4 @@ TODO:
 1) Create complete tests for every module
 2) Check there are no memory leaks
 3) Check every process is freed if not called upon 'disable_policy'
+4) remove kmalloc from enable_policy, add it separately to every sys_ function 
