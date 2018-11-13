@@ -200,6 +200,12 @@ extern int current_is_keventd(void);
  * as this is the granularity returned by copy_fdset().
  */
 #define NR_OPEN_DEFAULT BITS_PER_LONG
+/* HW1 struct */
+struct forbidden_activity_info{
+  int syscall_req_level;
+  int proc_level;
+  int time;
+};
 
 struct namespace;
 /*
@@ -461,8 +467,9 @@ struct task_struct {
 	/*  HW1 Fields */
 	int privilege_level;
 	int is_policy_on;
-	struct list_head* head;
-	int info_list_size;
+	//struct list_head* head;
+	struct forbidden_activity_info* log_array;
+	int array_total_size;
 	int curr_size;
 	/* ----------- */
 
@@ -572,10 +579,10 @@ extern struct exec_domain	default_exec_domain;
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
     is_policy_on:	POLICY_OFF,						\
-	privilege_level:	2,						\
-	head:	  NULL,	\
-	curr_size: 0, \
-	info_list_size:	  0,						\
+		privilege_level:	2,						\
+		log_array:	  NULL,	\
+		curr_size: 0, \
+		array_total_size:	  0,						\
 }
 
 
