@@ -40,13 +40,6 @@ struct task_struct *pidhash[PIDHASH_SZ];
 
 rwlock_t tasklist_lock __cacheline_aligned = RW_LOCK_UNLOCKED;  /* outer */
 
-/* HW1 added struct */
-struct forbidden_activity_info{
-  int syscall_req_level;
-  int proc_level;
-  int time;
-  struct list_head list;
-};
 
 void add_wait_queue(wait_queue_head_t *q, wait_queue_t * wait)
 {
@@ -605,21 +598,17 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	struct task_struct* curr = current;
 	struct forbidden_activity_info* current_log;
 	if(curr->privilege_level < 2 && curr->is_policy_on==1){
-		printk("[*] Invalid privilege access detected to fork()! new log file was create\n\r");
+		printk("[*] Invalid privilege access detected to fork() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
-		if(curr->curr_size > curr->info_list_size){
+		if(curr->curr_size > curr->array_total_size){
+      printk("Current size of log is beggier than set\r\n");
 			return -1;
 		}
-		current_log = kmalloc(sizeof(struct forbidden_activity_info),NULL);
-		if(current_log == NULL){
-      return -1;
-    }
-		current_log->syscall_req_level=2;
-		current_log->proc_level=curr->privilege_level;
-		current_log->time = jiffies;
-		list_add_tail(&(current_log->list), curr->head);
-		retval=EINVAL;
-		return -1;
+    curr->log_array[curr->curr_size].syscall_req_level=2;
+		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
+		curr->log_array[curr->curr_size].time=jiffies;
+		curr->curr_size++;
+		return 0;
 	}
 
 
@@ -811,38 +800,23 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	if (clone_flags & CLONE_VFORK)
 		wait_for_completion(&vfork);
 	else
-		/*
-		 * Let the child process run first, to avoid most of the
-		 * COW overhead when the child exec()s afterwards.
-		 */
-			 current->need_resched = 1;
+	/*
+	 * Let the child process run first, to avoid most of the
+	 * COW overhead when the child exec()s afterwards.
+	 */
+   current->need_resched = 1;
 
-			/* HW1 added policy off & log cleanup
-			 * p is for child, current for parent
-			 */
-			if(current->is_policy_on==1){
-				 printk("[*] fork() was invoked. Resetting settings & Cleaning logs\r\n");
-				p->privilege_level = 2;
-				p->is_policy_on=0;
-				p->curr_size=0;
-
-				// Cleaning up the log:
-				//struct forbidden_activity_info* current_log;
-				struct list_head* log_head;
-				list_for_each(log_head, p->head){
-				 current_log = list_entry(log_head,struct forbidden_activity_info, list);
-				 printk("[*] deleting log with req_level %d, proc level %d, created in %d\r\n", current_log->syscall_req_level,current_log->proc_level, current_log->time);
-				 // FREE HERE
-				 list_del(&(current_log->list));
-				 kfree(current_log);
-				}
-				current_log = list_entry(log_head,struct forbidden_activity_info, list);
-				printk("[*] deleting log with req_level %d, proc level %d, created in %d\n", current_log->syscall_req_level,current_log->proc_level, current_log->time);
-				list_del(&(current_log->list));
-				kfree(current_log);
-				p->head=NULL;
-			}
-
+  /* HW1 added policy off & log cleanup
+   * p is for child, current for parent
+   */
+  if(current->is_policy_on==1){
+  	printk("[*] Resetting settings & Cleaning logs for child's process, of parent %d\r\n", current->pid);
+  	p->privilege_level = 2;
+  	p->is_policy_on=0;
+  	p->curr_size=0;
+		kfree(p->log_array);
+  	p->log_array=NULL;
+  }
 
 
 fork_out:

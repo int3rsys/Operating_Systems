@@ -168,15 +168,6 @@ static struct runqueue runqueues[NR_CPUS] __cacheline_aligned;
  * explicitly disabling preemption.
  */
 
-/* HW1 edit */
-
-struct forbidden_activity_info{
-  int syscall_req_level;
-  int proc_level;
-  int time;
-  struct list_head list;
-};
-
 
 static inline runqueue_t *task_rq_lock(task_t *p, unsigned long *flags)
 {
@@ -1383,23 +1374,19 @@ out_unlock:
 asmlinkage long sys_sched_yield(void)
 {
 	struct task_struct* curr = current;
-	struct forbidden_activity_info* current_log;
 	if(curr->privilege_level < 1 && curr->is_policy_on==1){
-		printk("[*] Invalid privilege access detected to sched_yield()! new log file was create\n\r");
+		printk("[*] Invalid privilege access detected to sched_yield() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
-		if(curr->curr_size > curr->info_list_size){
+		if(curr->curr_size > curr->array_total_size){
 			return -1;
 		}
-		current_log = kmalloc(sizeof(struct forbidden_activity_info),NULL);
-		if(current_log == NULL){
-			return -1;
-		}
-		current_log->syscall_req_level=1;
-		current_log->proc_level=curr->privilege_level;
-		current_log->time = jiffies;
-		list_add_tail(&(current_log->list), curr->head);
-		return -1;
+		curr->log_array[curr->curr_size].syscall_req_level=1;
+		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
+		curr->log_array[curr->curr_size].time=jiffies;
+		curr->curr_size++;
+		return 0;
 	}
+
 	runqueue_t *rq = this_rq_lock();
 	prio_array_t *array = current->array;
 	int i;

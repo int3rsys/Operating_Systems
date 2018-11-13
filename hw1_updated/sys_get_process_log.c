@@ -6,16 +6,14 @@
 #include <linux/list.h>
 #include <asm/uaccess.h>
 
-struct forbidden_activity_info{
-  int syscall_req_level;
-  int proc_level;
-  int time;
-  struct list_head list;
-};
 
 int sys_get_process_log(pid_t pid ,int size, struct forbidden_activity_info* user_mem){
     struct task_struct* curr=current;
+    struct forbidden_activity_info* current_log;
+    struct forbidden_activity_info* new_arr;
+    int i=0, result,i2=0;
     printk("[*] Reading log file for process %d: \r\n", pid);
+
     if (curr == NULL){
         return -1;
     }
@@ -25,48 +23,47 @@ int sys_get_process_log(pid_t pid ,int size, struct forbidden_activity_info* use
     if(size == 0){
       return 0;
     }
-    if(size > curr->info_list_size){
+    if(size > curr->curr_size){
+      printk("___________Size (%d) given is bigger than amount of records(%d)!___________\r\n",size,curr->curr_size);
       return -1;
     }
-    // ** Add memory allocation check **
-
-    struct forbidden_activity_info* current_log;
-    struct list_head* log_head;
-    int cnt=0, result;
     // ** The copy itself: **
 
-    list_for_each(log_head, curr->head){
-      current_log = list_entry(log_head,struct forbidden_activity_info, list);
-      result = copy_to_user(&user_mem[cnt], current_log, sizeof(struct forbidden_activity_info));
+    for(i;i<size;i++){
+      result = copy_to_user(&user_mem[i],&(curr->log_array[i]), sizeof(struct forbidden_activity_info));
       if (result != 0){
-        printk("result is not zero, but: %d\r\n", result);
-      }
-      printk("#%0d contains: req_level %d, proc level %d, created in %d\n\r",cnt, current_log->syscall_req_level,current_log->proc_level, current_log->time);
-      printk("[*] deleting log #%0d\n\r",cnt);
-      // FREE HERE
-      list_del(&(current_log->list));
-      kfree(current_log);
-      cnt++;
-      if(cnt == size){
-        return 0;
+        printk("__FAILED TO COPY TO USER with pid %d\r\n", result);
+        return -1;
       }
     }
 
-    /* Implementation for List
-
-    list_for_each(log_head, curr->head){
-      current_log = list_entry(log_head,struct forbidden_activity_info, list);
-      printk("#%0d contains: req_level %d, proc level %d, created in %d\n\r",cnt, current_log->syscall_req_level,current_log->proc_level, current_log->time);
-      printk("[*] deleting log #%0d\n\r",cnt);
-      // FREE HERE
-      list_del(&(current_log->list));
-      kfree(current_log);
-      cnt++;
-      if(cnt == size){
-        return 0;
+    printk("+++++ Copied %d records ++++++\r\n",i);
+    // MOVE old records to the beginning
+    new_arr = kmalloc(sizeof(struct forbidden_activity_info) * curr->array_total_size);
+    // if time (or any other param) == -1, then we don't need to copy these vals. We set them anyways below
+    if (curr->log_array[i].time == -1){
+      for(i2;i2<curr->array_total_size; i2++){
+        new_arr[i2].syscall_req_level = -1;
+        new_arr[i2].proc_level = -1;
+        new_arr[i2].time = -1;
+      }
+      i=0;
+    }else{
+      for(i;i<curr->curr_size;i++){
+        new_arr[i2].syscall_req_level = curr->log_array[i].syscall_req_level;
+        new_arr[i2].proc_level = curr->log_array[i].proc_level;
+        new_arr[i2].time = curr->log_array[i].time;
+        i2++;
+      }
+      for(i2;i2<curr->array_total_size; i2++){
+        new_arr[i2].syscall_req_level = -1;
+        new_arr[i2].proc_level = -1;
+        new_arr[i2].time = -1;
       }
     }
 
-    */
+    kfree(curr->log_array);
+    curr->curr_size = i;
+    curr->log_array=new_arr;
     return 0;
 }

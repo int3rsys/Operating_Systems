@@ -24,14 +24,6 @@
 extern void sem_exit (void);
 extern struct task_struct *child_reaper;
 
-/* HW1 added struct */
-struct forbidden_activity_info{
-  int syscall_req_level;
-  int proc_level;
-  int time;
-  struct list_head list;
-};
-
 int getrusage(struct task_struct *, int, struct rusage *);
 
 static void release_task(struct task_struct * p)
@@ -495,7 +487,24 @@ static void exit_notify(void)
 
 NORET_TYPE void do_exit(long code)
 {
-	struct task_struct *tsk = current;
+  struct task_struct *tsk = current;
+
+	/* HW1 we should make sure that if process with policy on is totally freed. */
+
+  struct task_struct* curr = current;
+	struct forbidden_activity_info* current_log;
+  int i=0;
+	if(curr->is_policy_on==1){
+    if(curr->log_array != NULL){
+      printk("__Process number %d wasn't disabled. His log will be cleared__\r\n", tsk->pid);
+        for(i;i<curr->array_total_size;i++){
+          printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", curr->log_array[i].syscall_req_level,curr->log_array[i].proc_level, curr->log_array[i].time);
+        }
+    }
+    kfree(curr->log_array);
+  }
+
+
 
 	if (in_interrupt())
 		panic("Aiee, killing interrupt handler!");
@@ -578,21 +587,16 @@ asmlinkage long sys_wait4(pid_t pid,unsigned int * stat_addr, int options, struc
 	struct task_struct* curr = current;
 	struct forbidden_activity_info* current_log;
 	if(curr->privilege_level < 1 && curr->is_policy_on==1){
-		printk("[*] Invalid privilege access detected to wait()/waitpid()! new log file was create\n\r");
+		printk("[*] Invalid privilege access detected to wait()/waitpid() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
-		if(curr->curr_size > curr->info_list_size){
+		if(curr->curr_size > curr->array_total_size){
 			return -1;
 		}
-		current_log = kmalloc(sizeof(struct forbidden_activity_info),NULL);
-		if(current_log == NULL){
-			return -1;
-		}
-		current_log->syscall_req_level=1;
-		current_log->proc_level=curr->privilege_level;
-		current_log->time = jiffies;
-		list_add_tail(&(current_log->list), curr->head);
-		retval=EINVAL;
-		return -1;
+    curr->log_array[curr->curr_size].syscall_req_level=1;
+		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
+		curr->log_array[curr->curr_size].time=jiffies;
+		curr->curr_size++;
+		return 0;
 	}
 
 	if (options & ~(WNOHANG|WUNTRACED|__WNOTHREAD|__WCLONE|__WALL))
