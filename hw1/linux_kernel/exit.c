@@ -590,13 +590,13 @@ asmlinkage long sys_wait4(pid_t pid,unsigned int * stat_addr, int options, struc
 		printk("[*] Invalid privilege access detected to wait()/waitpid() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
 		if(curr->curr_size > curr->array_total_size){
-			return -1;
+			return -EINVAL;
 		}
     curr->log_array[curr->curr_size].syscall_req_level=1;
 		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
 		curr->log_array[curr->curr_size].time=jiffies;
 		curr->curr_size++;
-		return 0;
+		return -EINVAL;
 	}
 
 	if (options & ~(WNOHANG|WUNTRACED|__WNOTHREAD|__WCLONE|__WALL))

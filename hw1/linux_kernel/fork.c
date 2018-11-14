@@ -602,7 +602,7 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 		/* TO ASK: What happens if curr_size > info_list_size */
 		if(curr->curr_size > curr->array_total_size){
         printk("Current size of log is bigger than set\r\n");
-			return -1;
+			return -EINVAL;
 		}
         curr->log_array[curr->curr_size].syscall_req_level=2;
 		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;

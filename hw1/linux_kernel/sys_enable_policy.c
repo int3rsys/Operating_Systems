@@ -38,6 +38,7 @@ int sys_enable_policy(pid_t pid ,int size, int password){
     proc->log_array = empty_log_arr;
     proc->is_policy_on = POLICY_ON;
     proc->array_total_size = size;
+	proc->privilege_level = 2;
     printk("[*] Policy for %d changed to: %d \r\n", pid, proc->is_policy_on);
     
 	return 0;

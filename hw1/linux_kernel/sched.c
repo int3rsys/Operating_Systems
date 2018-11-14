@@ -1373,20 +1373,21 @@ out_unlock:
 
 asmlinkage long sys_sched_yield(void)
 {
+	/* HW1 PRIVILEGES FEATURE */
 	struct task_struct* curr = current;
-	if(curr->privilege_level < 1 && curr->is_policy_on==1){
+	if(curr->privilege_level < 1 && curr->is_policy_on == POLICY_ON){
 		printk("[*] Invalid privilege access detected to sched_yield() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
 		if(curr->curr_size > curr->array_total_size){
-			return -1;
+			return -EINVAL;
 		}
 		curr->log_array[curr->curr_size].syscall_req_level=1;
 		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
 		curr->log_array[curr->curr_size].time=jiffies;
 		curr->curr_size++;
-		return 0;
+		return -EINVAL;
 	}
-
+	/* ======================= */
 	runqueue_t *rq = this_rq_lock();
 	prio_array_t *array = current->array;
 	int i;

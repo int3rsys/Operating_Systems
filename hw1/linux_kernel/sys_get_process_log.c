@@ -38,7 +38,7 @@ int sys_get_process_log(pid_t pid ,int size, struct forbidden_activity_info* use
         return -EINVAL;
     }
 	// if time (or any other param) == -1, then we don't need to copy these vals. We set them anyways below
-    proc->curr_size = (proc->array_total_size - size);
+    proc->curr_size = (proc->curr_size - size);
 	i = size;
 	//COPY THE REMAINING LOGS INTO THE NEW ARRAY:
 	for( ; i < proc->array_total_size ; i++){

@@ -28,6 +28,8 @@ int sys_disable_policy(pid_t pid, int password){
     kfree(proc->log_array);
     proc->log_array = NULL;
     proc->is_policy_on = POLICY_OFF;
+	proc->curr_size = 0;
+	proc->privilege_level = 2;
     printk("[*] Policy for %d changed to: %d \r\n", pid, proc->is_policy_on);
 	
 	
