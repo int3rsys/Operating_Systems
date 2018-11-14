@@ -28,6 +28,7 @@ extern unsigned long event;
 #include <linux/fs_struct.h>
 #include <linux/low-latency.h>
 
+
 struct exec_domain;
 
 /*
@@ -199,6 +200,12 @@ extern int current_is_keventd(void);
  * as this is the granularity returned by copy_fdset().
  */
 #define NR_OPEN_DEFAULT BITS_PER_LONG
+/* HW1 struct */
+struct forbidden_activity_info{
+  int syscall_req_level;
+  int proc_level;
+  int time;
+};
 
 struct namespace;
 /*
@@ -322,18 +329,7 @@ typedef struct prio_array prio_array_t;
 #define POLICY_ON 1
 #define POLICY_OFF 0
 
-typedef struct forbidden_activity_info{
-	int syscall_req_level;
-	int proc_level;
-	int time;
-}forbidden_activity_info;
 
-typedef struct info_node{
-	forbidden_activity_info info;
-	list_t list_ptr;
-}info_node;
-/* ------------------------- */
-/*             */
 struct task_struct {
 	/*
 	 * offsets of these are hardcoded elsewhere - touch with care
@@ -385,9 +381,9 @@ struct task_struct {
 	pid_t tgid;
 	/* boolean value for session group leader */
 	int leader;
-	/* 
+	/*
 	 * pointers to (original) parent process, youngest child, younger sibling,
-	 * older sibling, respectively.  (p->father can be replaced with 
+	 * older sibling, respectively.  (p->father can be replaced with
 	 * p->p_pptr->pid)
 	 */
 	task_t *p_opptr, *p_pptr, *p_cptr, *p_ysptr, *p_osptr;
@@ -458,7 +454,7 @@ struct task_struct {
 	void (*tux_exit)(void);
 
 	unsigned long cpus_allowed_mask;
-	
+
 /* Thread group tracking */
    	u32 parent_exec_id;
    	u32 self_exec_id;
@@ -471,9 +467,12 @@ struct task_struct {
 	/*  HW1 Fields */
 	int privilege_level;
 	int is_policy_on;
-	list_t info_list_head;
-	int info_list_size;
+	//struct list_head* head;
+	struct forbidden_activity_info* log_array;
+	int array_total_size;
+	int curr_size;
 	/* ----------- */
+
 };
 
 /*
@@ -579,10 +578,11 @@ extern struct exec_domain	default_exec_domain;
     blocked:		{{0}},						\
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
-	is_policy_on:	POLICY_OFF,						\
-	privilege_level:	2,						\
-	info_list_head:	  LIST_HEAD_INIT(tsk.info_list_head),	\
-	info_list_size:	  0,						\
+    is_policy_on:	POLICY_OFF,						\
+		privilege_level:	2,						\
+		log_array:	  NULL,	\
+		curr_size: 0, \
+		array_total_size:	  0,						\
 }
 
 
@@ -609,7 +609,6 @@ extern task_t *pidhash[PIDHASH_SZ];
 static inline void hash_pid(task_t *p)
 {
 	task_t **htable = &pidhash[pid_hashfn(p->pid)];
-
 	if((p->pidhash_next = *htable) != NULL)
 		(*htable)->pidhash_pprev = &p->pidhash_next;
 	*htable = p;
@@ -643,7 +642,7 @@ extern void free_uid(struct user_struct *);
  * The 64-bit value is not volatile - you MUST NOT read it
  * without holding read_lock_irq(&xtime_lock)
  */
-extern u64 jiffies_64; 
+extern u64 jiffies_64;
 extern unsigned long volatile jiffies;
 extern unsigned long itimer_ticks;
 extern unsigned long itimer_next;
@@ -781,12 +780,12 @@ extern void free_irq(unsigned int, void *);
  * fsuser(). This is done, along with moving fsuser() checks to be
  * last.
  *
- * These will be removed, but in the mean time, when the SECURE_NOROOT 
+ * These will be removed, but in the mean time, when the SECURE_NOROOT
  * flag is set, uids don't grant privilege.
  */
 static inline int suser(void)
 {
-	if (!issecure(SECURE_NOROOT) && current->euid == 0) { 
+	if (!issecure(SECURE_NOROOT) && current->euid == 0) {
 		current->flags |= PF_SUPERPRIV;
 		return 1;
 	}
@@ -803,7 +802,7 @@ static inline int fsuser(void)
 }
 
 /*
- * capable() checks for a particular capability.  
+ * capable() checks for a particular capability.
  * New privilege checks should use this interface, rather than suser() or
  * fsuser(). See include/linux/capability.h for defined capabilities.
  */
@@ -919,7 +918,7 @@ do {									\
 	current->state = TASK_RUNNING;					\
 	remove_wait_queue(&wq, &__wait);				\
 } while (0)
-	
+
 #define wait_event_interruptible(wq, condition)				\
 ({									\
 	int __ret = 0;							\

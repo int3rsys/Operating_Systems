@@ -40,6 +40,7 @@ struct task_struct *pidhash[PIDHASH_SZ];
 
 rwlock_t tasklist_lock __cacheline_aligned = RW_LOCK_UNLOCKED;  /* outer */
 
+
 void add_wait_queue(wait_queue_head_t *q, wait_queue_t * wait)
 {
 	unsigned long flags;
@@ -173,7 +174,7 @@ static inline int dup_mmap(struct mm_struct * mm)
 		retval = -ENOMEM;
 		if(mpnt->vm_flags & VM_DONTCOPY)
 			continue;
-	
+
 		/* FIXME: shared writable map accounting should be one off */
 		if(mpnt->vm_flags & VM_ACCOUNT)
 		{
@@ -195,7 +196,7 @@ static inline int dup_mmap(struct mm_struct * mm)
 			get_file(file);
 			if (tmp->vm_flags & VM_DENYWRITE)
 				atomic_dec(&inode->i_writecount);
-      
+
 			/* insert tmp into the share list, just after mpnt */
 			spin_lock(&inode->i_mapping->i_shared_lock);
 			if((tmp->vm_next_share = mpnt->vm_next_share) != NULL)
@@ -252,7 +253,7 @@ static struct mm_struct * mm_init(struct mm_struct * mm)
 	free_mm(mm);
 	return NULL;
 }
-	
+
 
 /*
  * Allocate and initialize an mm_struct.
@@ -403,7 +404,7 @@ static inline struct fs_struct *__copy_fs_struct(struct fs_struct *old)
 		} else {
 			fs->altrootmnt = NULL;
 			fs->altroot = NULL;
-		}	
+		}
 		read_unlock(&old->lock);
 	}
 	return fs;
@@ -429,7 +430,7 @@ static inline int copy_fs(unsigned long clone_flags, struct task_struct * tsk)
 static int count_open_files(struct files_struct *files, int size)
 {
 	int i;
-	
+
 	/* Find the last open fd */
 	for (i = size/(8*sizeof(long)); i > 0; ) {
 		if (files->open_fds->fds_bits[--i])
@@ -460,7 +461,7 @@ static int copy_files(unsigned long clone_flags, struct task_struct * tsk)
 	tsk->files = NULL;
 	error = -ENOMEM;
 	newf = kmem_cache_alloc(files_cachep, SLAB_KERNEL);
-	if (!newf) 
+	if (!newf)
 		goto out;
 
 	atomic_set(&newf->count, 1);
@@ -500,7 +501,7 @@ static int copy_files(unsigned long clone_flags, struct task_struct * tsk)
 		write_lock(&newf->file_lock);
 		error = expand_fd_array(newf, open_files-1);
 		write_unlock(&newf->file_lock);
-		if (error) 
+		if (error)
 			goto out_release;
 		nfds = newf->max_fds;
 		read_lock(&oldf->file_lock);
@@ -523,13 +524,13 @@ static int copy_files(unsigned long clone_flags, struct task_struct * tsk)
 	/* compute the remainder to be cleared */
 	size = (newf->max_fds - open_files) * sizeof(struct file *);
 
-	/* This is long word aligned thus could use a optimized version */ 
-	memset(new_fds, 0, size); 
+	/* This is long word aligned thus could use a optimized version */
+	memset(new_fds, 0, size);
 
 	if (newf->max_fdset > open_files) {
 		int left = (newf->max_fdset-open_files)/8;
 		int start = open_files / (8 * sizeof(unsigned long));
-		
+
 		memset(&newf->open_fds->fds_bits[start], 0, left);
 		memset(&newf->close_on_exec->fds_bits[start], 0, left);
 	}
@@ -587,18 +588,37 @@ static inline void copy_flags(unsigned long clone_flags, struct task_struct *p)
 int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	    struct pt_regs *regs, unsigned long stack_size)
 {
-
 	int retval;
 	unsigned long flags;
 	struct task_struct *p;
 	struct completion vfork;
+
+	/* HW1 edit to check privilege_level */
+
+	struct task_struct* curr = current;
+	struct forbidden_activity_info* current_log;
+	if(curr->privilege_level < 2 && curr->is_policy_on == POLICY_ON ){
+		printk("[*] Invalid privilege access detected to fork() by pid %d\n\r", curr->pid);
+		/* TO ASK: What happens if curr_size > info_list_size */
+		if(curr->curr_size > curr->array_total_size){
+        printk("Current size of log is bigger than set\r\n");
+			return -1;
+		}
+        curr->log_array[curr->curr_size].syscall_req_level=2;
+		curr->log_array[curr->curr_size].proc_level=curr->privilege_level;
+		curr->log_array[curr->curr_size].time=jiffies;
+		curr->curr_size++;
+		return -EINVAL;
+	}
+
+
 
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return -EINVAL;
 
 	retval = -EPERM;
 
-	/* 
+	/*
 	 * CLONE_PID is only allowed for the initial SMP swapper
 	 * calls
 	 */
@@ -606,29 +626,6 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 		if (current->pid)
 			goto fork_out;
 	}
- 
-	/* HW1 policy & privilege check */
-	
-	if(current->is_policy_on){
-		if (current->privilege_level < 2){
-
-			//Create new info node:
-			info_node *new_info = kmalloc(sizeof(*new_info),GFP_KERNEL);
-			if(new_info == NULL){
-				return -ENOMEM;
-			}
-			new_info->info.syscall_req_level = 2;
-			new_info->info.proc_level = current->privilege_level;
-			new_info->info.time = jiffies;
-			
-			//Add to the new node to the log list:
-			list_add_tail(&new_info->list_ptr, &current->info_list_head);
-			current->info_list_size++;
-			printk("\n HW1: Added to log. \n");
-			return -EINVAL;
-		}
-	}
-	/* ------------------------ */
 
 	retval = -ENOMEM;
 	p = alloc_task_struct();
@@ -660,7 +657,7 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	 */
 	if (nr_threads >= max_threads)
 		goto bad_fork_cleanup_count;
-	
+
 	get_exec_domain(p->exec_domain);
 
 	if (p->binfmt && p->binfmt->module)
@@ -729,10 +726,10 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	if (retval)
 		goto bad_fork_cleanup_namespace;
 	p->semundo = NULL;
-	
+
 	/* Our parent execution domain becomes current domain
 	   These must match for thread signalling to apply */
-	   
+
 	p->parent_exec_id = p->self_exec_id;
 
 	/* ok, now we should be set up.. */
@@ -803,11 +800,24 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	if (clone_flags & CLONE_VFORK)
 		wait_for_completion(&vfork);
 	else
-		/*
-		 * Let the child process run first, to avoid most of the
-		 * COW overhead when the child exec()s afterwards.
-		 */
-		current->need_resched = 1;
+	/*
+	 * Let the child process run first, to avoid most of the
+	 * COW overhead when the child exec()s afterwards.
+	 */
+   current->need_resched = 1;
+
+  /* HW1 added policy off & log cleanup
+   * p is for child, current for parent
+   */
+  if(current->is_policy_on==1){
+  	printk("[*] Resetting settings & Cleaning logs for child's process, of parent %d\r\n", current->pid);
+  	p->privilege_level = 2;
+  	p->is_policy_on=0;
+  	p->curr_size=0;
+		kfree(p->log_array);
+  	p->log_array=NULL;
+  }
+
 
 fork_out:
 	return retval;
@@ -857,18 +867,18 @@ void __init proc_caches_init(void)
 	if (!sigact_cachep)
 		panic("Cannot create signal action SLAB cache");
 
-	files_cachep = kmem_cache_create("files_cache", 
-			 sizeof(struct files_struct), 0, 
+	files_cachep = kmem_cache_create("files_cache",
+			 sizeof(struct files_struct), 0,
 			 SLAB_HWCACHE_ALIGN, NULL, NULL);
-	if (!files_cachep) 
+	if (!files_cachep)
 		panic("Cannot create files SLAB cache");
 
-	fs_cachep = kmem_cache_create("fs_cache", 
-			 sizeof(struct fs_struct), 0, 
+	fs_cachep = kmem_cache_create("fs_cache",
+			 sizeof(struct fs_struct), 0,
 			 SLAB_HWCACHE_ALIGN, NULL, NULL);
-	if (!fs_cachep) 
+	if (!fs_cachep)
 		panic("Cannot create fs_struct SLAB cache");
- 
+
 	vm_area_cachep = kmem_cache_create("vm_area_struct",
 			sizeof(struct vm_area_struct), 0,
 			SLAB_HWCACHE_ALIGN, NULL, NULL);
