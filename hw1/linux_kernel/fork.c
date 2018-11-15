@@ -814,7 +814,7 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
   	p->privilege_level = 2;
   	p->is_policy_on=0;
   	p->curr_size=0;
-		kfree(p->log_array);
+		//kfree(p->log_array);
   	p->log_array=NULL;
   }
 
