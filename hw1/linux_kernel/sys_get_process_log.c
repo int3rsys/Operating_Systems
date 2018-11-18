@@ -12,7 +12,7 @@ int sys_get_process_log(pid_t pid ,int size, struct forbidden_activity_info* use
     struct task_struct* proc = find_task_by_pid(pid);
     struct forbidden_activity_info* new_arr;
     int i = 0,j = 0, result;
-    printk("[*] Reading log file for process %d: \r\n", pid);
+    //printk("[*] Reading log file for process %d: \r\n", pid);
 
 	if(pid < 0 || proc == NULL){
       return -ESRCH;
@@ -25,16 +25,16 @@ int sys_get_process_log(pid_t pid ,int size, struct forbidden_activity_info* use
 	result = copy_to_user(user_mem , proc->log_array, (sizeof(struct forbidden_activity_info) * size) );
 
 	if (result != 0){
-        printk("__FAILED TO COPY TO USER with pid %d\r\n", result);
+        //printk("__FAILED TO COPY TO USER with pid %d\r\n", result);
         return -EINVAL;
     }
 	
 	
-    printk("+++++ Copied %d records ++++++\r\n",size);
+    //printk("+++++ Copied %d records ++++++\r\n",size);
     // MOVE old records to the beginning
     new_arr = kmalloc(sizeof(struct forbidden_activity_info) * proc->array_total_size, GFP_KERNEL);
     if (!new_arr){
-        printk("__FAILED TO KMALLOC NEW ARRAY\n");
+        //printk("__FAILED TO KMALLOC NEW ARRAY\n");
         return -EINVAL;
     }
 	// if time (or any other param) == -1, then we don't need to copy these vals. We set them anyways below
