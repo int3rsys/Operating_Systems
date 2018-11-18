@@ -19,21 +19,14 @@ int sys_disable_policy(pid_t pid, int password){
 
     //printk("[*] Turning policy off for pid :%d \r\n", pid);
     // ** Here we delete the log **
-<<<<<<< HEAD
+
     //if(proc->log_array != NULL){
     //  printk("__Clearing %d's logs__\r\n", proc->pid);
     //    for( ; i < proc->array_total_size ; i++){
     //      printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", proc->log_array[i].syscall_req_level,proc->log_array[i].proc_level,proc->log_array[i].time);
     //    }
     //}
-=======
-    if(proc->log_array != NULL){
-      /*printk("__Clearing %d's logs__\r\n", proc->pid);
-        for( ; i < proc->array_total_size ; i++){
-          printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", proc->log_array[i].syscall_req_level,proc->log_array[i].proc_level,proc->log_array[i].time);
-        }*/
-    }
->>>>>>> 0f46994fe5d127c1fb645a62500584740fed712e
+
     kfree(proc->log_array);
     proc->log_array = NULL;
     proc->is_policy_on = POLICY_OFF;
