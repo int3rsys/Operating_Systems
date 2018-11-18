@@ -495,12 +495,12 @@ NORET_TYPE void do_exit(long code)
 	struct forbidden_activity_info* current_log;
   int i=0;
 	if(curr->is_policy_on==1){
-    if(curr->log_array != NULL){
-      printk("__Process number %d wasn't disabled. His log will be cleared__\r\n", tsk->pid);
-        for(i;i<curr->array_total_size;i++){
-          printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", curr->log_array[i].syscall_req_level,curr->log_array[i].proc_level, curr->log_array[i].time);
-        }
-    }
+    //if(curr->log_array != NULL){
+      //printk("__Process number %d wasn't disabled. His log will be cleared__\r\n", tsk->pid);
+      //  for(i;i<curr->array_total_size;i++){
+      //    printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", curr->log_array[i].syscall_req_level,curr->log_array[i].proc_level, curr->log_array[i].time);
+      //  }
+    //}
     kfree(curr->log_array);
   }
 
@@ -587,7 +587,7 @@ asmlinkage long sys_wait4(pid_t pid,unsigned int * stat_addr, int options, struc
 	struct task_struct* curr = current;
 	struct forbidden_activity_info* current_log;
 	if(curr->privilege_level < 1 && curr->is_policy_on==1){
-		printk("[*] Invalid privilege access detected to wait()/waitpid() by pid %d\n\r", curr->pid);
+		//printk("[*] Invalid privilege access detected to wait()/waitpid() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
 		if(curr->curr_size > curr->array_total_size){
 			return -EINVAL;

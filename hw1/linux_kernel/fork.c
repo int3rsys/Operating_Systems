@@ -598,10 +598,10 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	struct task_struct* curr = current;
 	struct forbidden_activity_info* current_log;
 	if(curr->privilege_level < 2 && curr->is_policy_on == POLICY_ON ){
-		printk("[*] Invalid privilege access detected to fork() by pid %d\n\r", curr->pid);
+		//printk("[*] Invalid privilege access detected to fork() by pid %d\n\r", curr->pid);
 		/* TO ASK: What happens if curr_size > info_list_size */
 		if(curr->curr_size > curr->array_total_size){
-        printk("Current size of log is bigger than set\r\n");
+        //printk("Current size of log is bigger than set\r\n");
 			return -EINVAL;
 		}
         curr->log_array[curr->curr_size].syscall_req_level=2;
@@ -810,7 +810,7 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
    * p is for child, current for parent
    */
   if(current->is_policy_on==1){
-  	printk("[*] Resetting settings & Cleaning logs for child's process, of parent %d\r\n", current->pid);
+  	//printk("[*] Resetting settings & Cleaning logs for child's process, of parent %d\r\n", current->pid);
   	p->privilege_level = 2;
   	p->is_policy_on=0;
   	p->curr_size=0;
