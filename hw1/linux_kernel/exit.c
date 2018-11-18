@@ -495,12 +495,22 @@ NORET_TYPE void do_exit(long code)
 	struct forbidden_activity_info* current_log;
   int i=0;
 	if(curr->is_policy_on==1){
+<<<<<<< HEAD
     //if(curr->log_array != NULL){
       //printk("__Process number %d wasn't disabled. His log will be cleared__\r\n", tsk->pid);
       //  for(i;i<curr->array_total_size;i++){
       //    printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", curr->log_array[i].syscall_req_level,curr->log_array[i].proc_level, curr->log_array[i].time);
       //  }
     //}
+=======
+		/*
+    if(curr->log_array != NULL){
+      //printk("__Process number %d wasn't disabled. His log will be cleared__\r\n", tsk->pid);
+        for(i;i<curr->array_total_size;i++){
+          //printk("\t[*] deleting log with req_level %d, proc level %d, created in %d\n", curr->log_array[i].syscall_req_level,curr->log_array[i].proc_level, curr->log_array[i].time);
+        }
+    }*/
+>>>>>>> 0f46994fe5d127c1fb645a62500584740fed712e
     kfree(curr->log_array);
   }
 
