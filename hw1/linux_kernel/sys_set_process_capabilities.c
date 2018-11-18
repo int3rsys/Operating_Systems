@@ -13,7 +13,7 @@ int sys_set_process_capabilities(pid_t pid, int new_level, int password){
     }
   // DO WE NEED TO CHECK IF CURRENT LEVEL == NEW_LEVEL ??
   // Needs to allocate memory here:
-  printk("[*] Setting a new capability for process %d, from level %d -> to level %d\n", pid, proc->privilege_level, new_level);
+  //printk("[*] Setting a new capability for process %d, from level %d -> to level %d\n", pid, proc->privilege_level, new_level);
 	
   proc->privilege_level = new_level;
   return 0;
