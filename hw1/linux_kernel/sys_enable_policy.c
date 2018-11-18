@@ -21,11 +21,11 @@ int sys_enable_policy(pid_t pid ,int size, int password){
       return -EINVAL;
     }
 	
-    printk("[*] Turning on policy for pid :%d \n With size: %d, current policy is:%d \r\n", pid, size, proc->is_policy_on);
+    //printk("[*] Turning on policy for pid :%d \n With size: %d, current policy is:%d \r\n", pid, size, proc->is_policy_on);
 
     empty_log_arr = kmalloc(sizeof(struct forbidden_activity_info) * size, GFP_KERNEL );
     if (empty_log_arr == NULL){
-      printk("________Memory allocation failed________\r\n");
+      //printk("________Memory allocation failed________\r\n");
       return -EINVAL;
     }
 	// INITIALIZE EVERYTHING WITH -1 for debgging purposes.
@@ -39,7 +39,7 @@ int sys_enable_policy(pid_t pid ,int size, int password){
     proc->is_policy_on = POLICY_ON;
     proc->array_total_size = size;
 	proc->privilege_level = 2;
-    printk("[*] Policy for %d changed to: %d \r\n", pid, proc->is_policy_on);
+    //printk("[*] Policy for %d changed to: %d \r\n", pid, proc->is_policy_on);
     
 	return 0;
 }
