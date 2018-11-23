@@ -649,9 +649,9 @@ ENTRY(sys_call_table)
 	.long SYMBOL_NAME(sys_ni_syscall)	/* 240 reserved for futex */
 	.long SYMBOL_NAME(sys_sched_setaffinity)
 	.long SYMBOL_NAME(sys_sched_getaffinity)
-  /* HW1 edits: */
-  .long SYMBOL_NAME(sys_is_changeable) // number 243
-
+  /* HW1 system calls: */
+	/* 244 - is_changeable */
+	.long SYMBOL_NAME(sys_is_changeable)
 
 	.rept NR_syscalls-(.-sys_call_table)/4
 		.long SYMBOL_NAME(sys_ni_syscall)

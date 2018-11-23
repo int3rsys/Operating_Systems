@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 
-int sys_is_changeable(pid_t pid){
+int is_changeable(pid_t pid){
    int res;
 
     __asm__(
