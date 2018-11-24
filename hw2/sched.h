@@ -165,7 +165,7 @@ extern int start_context_thread(void);
 extern int current_is_keventd(void);
 
 /* HW1 edits: */
-extern int policy;
+extern int policy_status;
 
 /*
  * Priority of a process goes from 0..MAX_PRIO-1, valid RT
@@ -345,6 +345,11 @@ struct task_struct {
 	int prio, static_prio;
 	list_t run_list;
 	prio_array_t *array;
+
+	/* HW1 edit: */
+	prio_array_t *array_sc;
+	/* run_list_of_sc processes */
+	list_t run_list_sc;
 
 	unsigned long sleep_avg;
 	unsigned long sleep_timestamp;
@@ -536,6 +541,9 @@ extern struct exec_domain	default_exec_domain;
     mm:			NULL,						\
     active_mm:		&init_mm,					\
     run_list:		LIST_HEAD_INIT(tsk.run_list),			\
+		/* HW1 edit \
+		Initializes the run_list_sc with dummy, nothing special here */
+		run_list_sc: LIST_HEAD_INIT(tsk.run_list_sc),			\
     time_slice:		HZ,						\
     next_task:		&tsk,						\
     prev_task:		&tsk,						\

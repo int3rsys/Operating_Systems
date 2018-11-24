@@ -18,3 +18,18 @@ int is_changeable(pid_t pid){
     }
     return res;
 }
+
+int make_changeable(pid_t pid){
+   int res;
+
+    __asm__(
+    "int $0x80;"
+    : "=a" (res)
+    : "0" (244), "b"(pid)
+    );
+    if ((res) < 0){
+      errno = -(res);
+      res = -1;
+    }
+    return res;
+}
