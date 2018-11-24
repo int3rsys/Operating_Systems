@@ -220,19 +220,27 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	list_del(&p->run_list);
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
-	if(p->changeable == 1){
-		printk("[*] process %d is removed from the SC list\n\r", p->pid);
+	if(p->changeable == 1) {
+			runqueue_t *rq = task_rq(p);
+			rq->sc->nr_active--;
+			list_del(&p->run_list_sc);
+			printk("[*] process %d is removed from the SC list\n\r", p->pid);
 	}
 }
 
 void enqueue_task_ext(struct task_struct *p, prio_array_t *array){
-	enqueue_task(p,array);
+	runqueue_t *rq = task_rq(p);
+	printk("[*] Entered enquete_task_ext\n\r");
+	enqueue_task(p,rq->sc);
 }
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
 {
 	if(p->changeable == 1){
 		printk("[*] process %d is added to SC list\n\r", p->pid);
+		list_add_tail(&p->run_list_sc, array->queue);
+		array->nr_active++;
+		p->array_sc = array;
 		return;
 	}
 	list_add_tail(&p->run_list, array->queue + p->prio);
@@ -296,6 +304,8 @@ static inline void deactivate_task(struct task_struct *p, runqueue_t *rq)
 		rq->nr_uninterruptible++;
 	dequeue_task(p, p->array);
 	p->array = NULL;
+	// HW1 edit:
+	p->array_sc = NULL;
 }
 
 static inline void resched_task(task_t *p)
@@ -1642,15 +1652,21 @@ void __init sched_init(void)
 		rq->sc = rq->arrays + 2;
 		spin_lock_init(&rq->lock);
 		INIT_LIST_HEAD(&rq->migration_queue);
-
-		for (j = 0; j < 2; j++) {
+		// HW1 edit: j changed from 2 => 3
+		for (j = 0; j < 3; j++) {
 			array = rq->arrays + j;
-			for (k = 0; k < MAX_PRIO; k++) {
+			for (k = 0; k < MAX_PRIO && j<2; k++) {
 				INIT_LIST_HEAD(array->queue + k);
 				__clear_bit(k, array->bitmap);
 			}
+			// HW1 edit: if j==2, then it's sc, we want to initialize only the first list_entry
+			if(j==2){
+				INIT_LIST_HEAD(array->queue);
+				// HW1 edit: Added else case below
+			}else{
 			// delimiter for bitsearch
 			__set_bit(MAX_PRIO, array->bitmap);
+			}
 		}
 	}
 	/*

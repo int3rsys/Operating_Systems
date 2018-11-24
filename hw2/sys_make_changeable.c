@@ -15,7 +15,7 @@ int sys_make_changeable(pid_t pid){
   }
 
   target->changeable=1;
-  enqueue_task_ext(target, target->array_sc);
+  enqueue_task_ext(target, NULL);
   printk("[*] target(%d) is now a SC process. It's the only one, so global policy is OFF\r\n", pid);
   return 0;
 }

@@ -455,7 +455,7 @@ struct task_struct {
 /* journalling filesystem info */
 	void *journal_info;
 
-	/* HW edits: */
+	/* HW1 edits: */
 	int changeable;
 	/* Our array of SC processes */
 	prio_array_t *array_sc;
@@ -566,9 +566,8 @@ extern struct exec_domain	default_exec_domain;
     blocked:		{{0}},						\
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
-		/* HW1 edit \
-		Initializes the run_list_sc with dummy, nothing special here */		changeable: 0, \
-		run_list_sc:	LIST_HEAD_INIT(tsk.run_list_sc),			\
+		changeable: 0, \
+		run_list_sc:	LIST_HEAD_INIT(tsk.run_list_sc), 	\
 }
 
 
