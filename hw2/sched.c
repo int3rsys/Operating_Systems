@@ -216,19 +216,24 @@ static inline void rq_unlock(runqueue_t *rq)
  */
 static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 {
-	if(p->changeable == 1){
-		printk("[*] process %d is removed to SC list\n\r", p->pid);
-	}
 	array->nr_active--;
 	list_del(&p->run_list);
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
+	if(p->changeable == 1){
+		printk("[*] process %d is removed from the SC list\n\r", p->pid);
+	}
+}
+
+void enqueue_task_ext(struct task_struct *p, prio_array_t *array){
+	enqueue_task(p,array);
 }
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
 {
 	if(p->changeable == 1){
 		printk("[*] process %d is added to SC list\n\r", p->pid);
+		return;
 	}
 	list_add_tail(&p->run_list, array->queue + p->prio);
 	__set_bit(p->prio, array->bitmap);
@@ -1634,7 +1639,7 @@ void __init sched_init(void)
 		rq->active = rq->arrays;
 		rq->expired = rq->arrays + 1;
 		/* HW1 edit  - we initialize our sc list*/
-		eq->sc = eq->arrays + 2;
+		rq->sc = rq->arrays + 2;
 		spin_lock_init(&rq->lock);
 		INIT_LIST_HEAD(&rq->migration_queue);
 

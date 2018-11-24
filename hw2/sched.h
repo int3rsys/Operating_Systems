@@ -346,11 +346,6 @@ struct task_struct {
 	list_t run_list;
 	prio_array_t *array;
 
-	/* HW1 edit: */
-	prio_array_t *array_sc;
-	/* run_list_of_sc processes */
-	list_t run_list_sc;
-
 	unsigned long sleep_avg;
 	unsigned long sleep_timestamp;
 
@@ -462,6 +457,10 @@ struct task_struct {
 
 	/* HW edits: */
 	int changeable;
+	/* Our array of SC processes */
+	prio_array_t *array_sc;
+	/* run_list_of_sc processes */
+	list_t run_list_sc;
 };
 
 /*
@@ -541,9 +540,6 @@ extern struct exec_domain	default_exec_domain;
     mm:			NULL,						\
     active_mm:		&init_mm,					\
     run_list:		LIST_HEAD_INIT(tsk.run_list),			\
-		/* HW1 edit \
-		Initializes the run_list_sc with dummy, nothing special here */
-		run_list_sc: LIST_HEAD_INIT(tsk.run_list_sc),			\
     time_slice:		HZ,						\
     next_task:		&tsk,						\
     prev_task:		&tsk,						\
@@ -570,7 +566,9 @@ extern struct exec_domain	default_exec_domain;
     blocked:		{{0}},						\
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
-		changeable: 0, \
+		/* HW1 edit \
+		Initializes the run_list_sc with dummy, nothing special here */		changeable: 0, \
+		run_list_sc:	LIST_HEAD_INIT(tsk.run_list_sc),			\
 }
 
 
@@ -695,6 +693,11 @@ extern int kill_sl(pid_t, int, int);
 extern int kill_proc(pid_t, int, int);
 extern int do_sigaction(int, const struct k_sigaction *, struct k_sigaction *);
 extern int do_sigaltstack(const stack_t *, stack_t *, unsigned long);
+
+/* HW1 edits:
+	We add here a call to wrapper function to enqueue_task,
+	as enqueue_task is inline static */
+void enqueue_task_ext(struct task_struct *p, prio_array_t *array);
 
 static inline int signal_pending(task_t *p)
 {
