@@ -221,23 +221,27 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
 	if(p->policy == SCHED_C) {
-			runqueue_t *rq = task_rq(p);
+			runqueue_t *rq = this_rq();
 			rq->sc->nr_active--;
 			list_del(&p->run_list_sc);
 			printk("[*] process %d is removed from the SC list\n\r", p->pid);
 	}
 }
 
+inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
+	printk("[*] process %d is added to SC list\n\r", p->pid);
+	list_add_tail(&p->run_list_sc, array->queue);
+	array->nr_active++;
+	p->array_sc = array;
+}
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
 {
-	if(p->policy == SCHED_C){
-		printk("[*] process %d is added to SC list\n\r", p->pid);
-		list_add_tail(&p->run_list_sc, array->queue);
-		array->nr_active++;
-		p->array_sc = array;
+	/*if(p->policy == SCHED_C){
+		runqueue_t *rq = this_rq();
+		enqueue_task_sc(p,rq->sc);
 		return;
-	}
+	}*/
 	list_add_tail(&p->run_list, array->queue + p->prio);
 	__set_bit(p->prio, array->bitmap);
 	array->nr_active++;
@@ -428,6 +432,17 @@ void wake_up_forked_process(task_t * p)
 	}
 	p->cpu = smp_processor_id();
 	activate_task(p, rq);
+	/* HW1 edit:
+		Because the forked process was created now, we want to add it seperately to
+		our SC list
+	*/
+	if(current->policy == SCHED_C){
+		spin_lock_irq(rq);
+		enqueue_task_sc(p, rq->sc);
+		spin_unlock_irq(eq);
+		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
+	}
+
 
 	rq_unlock(rq);
 }
@@ -1946,7 +1961,7 @@ int sys_make_changeable(pid_t pid){
 
   target->policy=SCHED_C;
 	spin_lock_irq(rq);
-	enqueue_task(target,rq->sc);
+	enqueue_task_sc(target,rq->sc);
 	spin_unlock_irq(rq);
   printk("[*] target(%d) is now a SC process. It's the only one, so global policy is OFF\r\n", pid);
   return 0;
