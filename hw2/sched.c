@@ -1983,6 +1983,20 @@ int sys_is_changeable(pid_t pid){
   return target->policy==SCHED_C;
 }
 
+inline int get_lowest_task(){
+	runqueue_t *rq = this_rq();
+	struct task_struct* curr;
+	struct list_head *process_l;
+	spin_lock_irq(rq);
+
+	list_for_each(process_l, rq->sc->queue) {
+		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		printk("++PID: %d\r\n", curr->pid);
+	}
+	spin_unlock_irq(rq);
+
+}
+
 
 #ifdef CONFIG_LOLAT_SYSCTL
 struct low_latency_enable_struct __enable_lowlatency = { 0, };
