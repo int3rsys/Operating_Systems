@@ -119,6 +119,7 @@ extern unsigned long nr_uninterruptible(void);
 #define SCHED_OTHER		0
 #define SCHED_FIFO		1
 #define SCHED_RR		2
+#define SCHED_C 	3
 
 struct sched_param {
 	int sched_priority;
@@ -456,7 +457,6 @@ struct task_struct {
 	void *journal_info;
 
 	/* HW1 edits: */
-	int changeable;
 	/* Our array of SC processes */
 	prio_array_t *array_sc;
 	/* run_list_of_sc processes */
@@ -566,7 +566,6 @@ extern struct exec_domain	default_exec_domain;
     blocked:		{{0}},						\
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
-		changeable: 0, \
 		run_list_sc:	LIST_HEAD_INIT(tsk.run_list_sc), 	\
 }
 
@@ -692,11 +691,6 @@ extern int kill_sl(pid_t, int, int);
 extern int kill_proc(pid_t, int, int);
 extern int do_sigaction(int, const struct k_sigaction *, struct k_sigaction *);
 extern int do_sigaltstack(const stack_t *, stack_t *, unsigned long);
-
-/* HW1 edits:
-	We add here a call to wrapper function to enqueue_task,
-	as enqueue_task is inline static */
-void enqueue_task_ext(struct task_struct *p, prio_array_t *array);
 
 static inline int signal_pending(task_t *p)
 {

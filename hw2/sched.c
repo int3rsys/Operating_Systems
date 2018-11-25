@@ -220,7 +220,7 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	list_del(&p->run_list);
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
-	if(p->changeable == 1) {
+	if(p->policy == SCHED_C) {
 			runqueue_t *rq = task_rq(p);
 			rq->sc->nr_active--;
 			list_del(&p->run_list_sc);
@@ -228,15 +228,10 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	}
 }
 
-void enqueue_task_ext(struct task_struct *p, prio_array_t *array){
-	runqueue_t *rq = task_rq(p);
-	printk("[*] Entered enquete_task_ext\n\r");
-	enqueue_task(p,rq->sc);
-}
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
 {
-	if(p->changeable == 1){
+	if(p->policy == SCHED_C){
 		printk("[*] process %d is added to SC list\n\r", p->pid);
 		list_add_tail(&p->run_list_sc, array->queue);
 		array->nr_active++;
@@ -1936,6 +1931,35 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
 	}
 	return 0;
 }
+
+int sys_make_changeable(pid_t pid){
+  struct task_struct* target = find_task_by_pid(pid);
+	runqueue_t *rq = this_rq();
+  // NOTE: check case when target==NULL ****
+
+  if(target == NULL){
+    return -ESRCH;
+  }
+  if(current->policy == SCHED_C || target->policy == SCHED_C){
+    return -ESRCH;
+  }
+
+  target->policy=SCHED_C;
+	spin_lock_irq(rq);
+	enqueue_task(target,rq->sc);
+	spin_unlock_irq(rq);
+  printk("[*] target(%d) is now a SC process. It's the only one, so global policy is OFF\r\n", pid);
+  return 0;
+}
+
+int sys_is_changeable(pid_t pid){
+  struct task_struct* target = find_task_by_pid(pid);
+  if(target == NULL){
+    return -ESRCH;
+  }
+  return target->policy==SCHED_C;
+}
+
 
 #ifdef CONFIG_LOLAT_SYSCTL
 struct low_latency_enable_struct __enable_lowlatency = { 0, };
