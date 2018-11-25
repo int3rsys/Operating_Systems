@@ -420,6 +420,14 @@ void wake_up_forked_process(task_t * p)
 	runqueue_t *rq = this_rq_lock();
 
 	p->state = TASK_RUNNING;
+	/* HW1 edit: */
+	if(current->policy == SCHED_C){
+		printk("	[*] Before fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
+		p->static_prio = current->static_prio;
+		p->time_slice = (current->time_slice / 2)+(current->time_slice % 2);
+		current->time_slice/=2;
+		printk("	[*] After fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
+	}
 	if (!rt_task(p)) {
 		/*
 		 * We decrease the sleep average of forking parents
