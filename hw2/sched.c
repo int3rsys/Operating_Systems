@@ -220,12 +220,15 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	list_del(&p->run_list);
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
-	if(p->policy == SCHED_C && !p->state==TASK_RUNNING) {
-			runqueue_t *rq = this_rq();
-			rq->sc->nr_active--;
-			list_del(&p->run_list_sc);
-			printk("[*] process %d is removed from the SC list\n\r", p->pid);
-	}
+}
+/* HW1 edit */
+inline void dequeue_task_sc(struct task_struct *p){
+		runqueue_t *rq = this_rq();
+		spin_lock_irq(rq);
+		rq->sc->nr_active--;
+		list_del(&p->run_list_sc);
+		spin_unlock_irq(rq);
+		printk("[*] process %d is removed from the SC list\n\r", p->pid);
 }
 
 inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
@@ -400,6 +403,18 @@ repeat_lock_task:
 		/*
 		 * If sync is set, a resched_task() is a NOOP
 		 */
+		/* HW1 edit:
+			 Here we activate the awaken task if it has the lowest pid_t
+			 TODO: After writing change() function, release the comments.
+		*/
+		if(/*policy_status == 1 &&*/ p->policy == SCHED_C){
+			struct task_struct* lowest = get_lowest_task();
+			if(lowest->pid >= p->pid){
+				printk("-[*]- Awaken process %d need resched, has lower pid current running (%d)\r\n",p->pid,lowest->pid);
+				//set_need_resched(p);
+			}
+
+		}
 		if (p->prio < rq->curr->prio)
 			resched_task(rq->curr);
 		success = 1;
@@ -1985,7 +2000,7 @@ int sys_is_changeable(pid_t pid){
   return target->policy==SCHED_C;
 }
 
-inline int get_lowest_task(){
+inline struct task_struct* get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
 	struct task_struct* lowest=current;
@@ -1995,13 +2010,14 @@ inline int get_lowest_task(){
 	printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
-		if(lowest->pid > curr->pid){
+		if(lowest->pid > curr->pid && curr->state==TASK_RUNNING){
 			lowest = curr;
 		}
 		printk("++PID: %d\r\n", curr->pid);
 	}
 	printk("		[*] Lowest PID is: %d\r\n", lowest->pid);
 	spin_unlock_irq(rq);
+	return lowest;
 
 }
 
