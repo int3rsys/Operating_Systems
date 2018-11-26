@@ -220,7 +220,7 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 	list_del(&p->run_list);
 	if (list_empty(array->queue + p->prio))
 		__clear_bit(p->prio, array->bitmap);
-	if(p->policy == SCHED_C) {
+	if(p->policy == SCHED_C && !p->state==TASK_RUNNING) {
 			runqueue_t *rq = this_rq();
 			rq->sc->nr_active--;
 			list_del(&p->run_list_sc);
@@ -449,7 +449,9 @@ void wake_up_forked_process(task_t * p)
 		enqueue_task_sc(p, rq->sc);
 		spin_unlock_irq(eq);
 		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
+		//get_lowest_task();
 	}
+
 
 
 	rq_unlock(rq);
@@ -1986,13 +1988,19 @@ int sys_is_changeable(pid_t pid){
 inline int get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
+	struct task_struct* lowest=current;
 	struct list_head *process_l;
-	spin_lock_irq(rq);
 
+	spin_lock_irq(rq);
+	printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		if(lowest->pid > curr->pid){
+			lowest = curr;
+		}
 		printk("++PID: %d\r\n", curr->pid);
 	}
+	printk("		[*] Lowest PID is: %d\r\n", lowest->pid);
 	spin_unlock_irq(rq);
 
 }
