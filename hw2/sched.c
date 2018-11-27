@@ -132,6 +132,9 @@ struct prio_array {
  * (such as the load balancing or the process migration code), lock
  * acquire operations must be ordered by ascending &runqueue.
  */
+
+/* HW2- declaration of policy status: */
+int policy_status;
 struct runqueue {
 	spinlock_t lock;
 	unsigned long nr_running, nr_switches, expired_timestamp;
@@ -411,7 +414,7 @@ repeat_lock_task:
 		   rq->curr->policy == SCHED_C && p->policy == SCHED_C){
 			   //if awaken has lower PID:
  			if(p->pid < rq->curr->pid){
- 				printk("-[*]- Awaken process %d need resched, has lower pid current running (%d)\r\n",p->pid,lowest->pid);
+ 				printk("-[*]- Awaken process %d has lower pid, current running (%d) need resched \r\n", p->pid,rq->curr->pid);
  				resched_task(rq->curr);
  			}
  		}
@@ -1679,6 +1682,9 @@ extern void immediate_bh(void);
 
 void __init sched_init(void)
 {
+	/* HW2- init the global policy status: */
+	policy_status = HW2_POLICY_OFF;
+
 	runqueue_t *rq;
 	int i, j, k;
 
