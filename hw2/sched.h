@@ -167,6 +167,8 @@ extern int current_is_keventd(void);
 
 /* HW1 edits: */
 extern int policy_status;
+#define HW2_POLICY_ON 1 
+#define HW2_POLICY_OFF 0 
 
 /*
  * Priority of a process goes from 0..MAX_PRIO-1, valid RT
