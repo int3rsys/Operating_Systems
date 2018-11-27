@@ -419,12 +419,14 @@
  		 * If sync is set, a resched_task() is a NOOP
  		 */
  		/* HW1 edit:
- 			 Here we activate the awaken task if it has the lowest pid_t
+			 If current proccess AND awaken proccess are CHANGEABLEs, and
+			 the awaken is with lower PID, we preemeted the current proccess.
  			 TODO: After writing change() function, release the comments.
  		*/
- 		if(/*policy_status == 1 &&*/ p->policy == SCHED_C){
- 			struct task_struct* lowest = get_lowest_task();
- 			if(lowest->pid >= p->pid){
+ 		if(/*policy_status == 1 &&*/
+		  rq->curr->policy == SCHED_C p->policy == SCHED_C){
+ 			//struct task_struct* lowest = get_lowest_task();
+ 			if(p->pid < rq->curr->pid){//lowest->pid >= p->pid){
  				printk("-[*]- Awaken process %d need resched, has lower pid current running (%d)\r\n",p->pid,lowest->pid);
  				//set_need_resched(p);
  			}
@@ -4054,6 +4056,14 @@ int sys_is_changeable(pid_t pid){
     return -ESRCH;
   }
   return target->policy==SCHED_C;
+}
+
+int sys_change(int val){
+
+  if(policy_on == 1){
+    return -ESRCH;
+  }
+  return 0;
 }
 
 inline struct task_struct* get_lowest_task(){
