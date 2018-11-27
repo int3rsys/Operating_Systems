@@ -936,7 +936,7 @@
  	next = list_entry(queue->next, task_t, run_list);
 
  	/* HW1 edit:
- 		 now that we know the next process, we will check if next == scheduler_tick
+ 		 now that we know the next process, we will check if next == schedluer_tick
  		 if it's has the lowest PID, it will enter the cpu immediately,
  		 otherwise, it will go into the expired queue.
    */
@@ -946,10 +946,11 @@
 
  		if(lowest_task->pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
  			printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
- 			spin_lock_irq(rq);
+ 			//spin_lock_irq(rq);
+			 //Evict the proccess to the expired:
  			dequeue_task(next,rq->active);
  			enqueue_task(next,rq->expired);
- 			spin_unlock_irq(rq);
+ 			//spin_unlock_irq(rq);
  			goto pick_next_task_2;
  		}
  	}
@@ -1264,7 +1265,7 @@
  	else {
  		retval = -EINVAL;
  		if (policy != SCHED_FIFO && policy != SCHED_RR &&
- 				policy != SCHED_OTHER)
+ 				policy != SCHED_OTHER && policy != SCHED_C) /* HW2- Added SCHED_C cond*/
  			goto out_unlock;
  	}
 
@@ -1275,7 +1276,7 @@
  	retval = -EINVAL;
  	if (lp.sched_priority < 0 || lp.sched_priority > MAX_USER_RT_PRIO-1)
  		goto out_unlock;
- 	if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
+ 	if ((policy == SCHED_OTHER || policy == SCHED_C) != (lp.sched_priority == 0)) /* HW2- Added SCHED_C cond*/
  		goto out_unlock;
 
  	retval = -EPERM;
@@ -1292,7 +1293,7 @@
  	retval = 0;
  	p->policy = policy;
  	p->rt_priority = lp.sched_priority;
- 	if (policy != SCHED_OTHER)
+ 	if (policy != SCHED_OTHER && policy != SCHED_C) /* HW2- Added SCHED_C cond*/
  		p->prio = MAX_USER_RT_PRIO-1 - p->rt_priority;
  	else
  		p->prio = p->static_prio;
@@ -1513,6 +1514,7 @@
  	case SCHED_RR:
  		ret = MAX_USER_RT_PRIO-1;
  		break;
+	case SCHED_C: /* HW2- Added SCHED_C cond. */
  	case SCHED_OTHER:
  		ret = 0;
  		break;
@@ -1529,6 +1531,7 @@
  	case SCHED_RR:
  		ret = 1;
  		break;
+	case SCHED_C: /* HW2- Added SCHED_C cond. */
  	case SCHED_OTHER:
  		ret = 0;
  	}
@@ -3278,7 +3281,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	else {
 		retval = -EINVAL;
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
-				policy != SCHED_OTHER)
+				policy != SCHED_OTHER && policy != SCHED_C) /* HW2- Added SCHED_C cond */
 			goto out_unlock;
 	}
 
@@ -3289,7 +3292,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	retval = -EINVAL;
 	if (lp.sched_priority < 0 || lp.sched_priority > MAX_USER_RT_PRIO-1)
 		goto out_unlock;
-	if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
+	if ((policy == SCHED_OTHER || policy == SCHED_C) != (lp.sched_priority == 0)) /* HW2- Added SCHED_C cond*/
 		goto out_unlock;
 
 	retval = -EPERM;
@@ -3306,7 +3309,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	retval = 0;
 	p->policy = policy;
 	p->rt_priority = lp.sched_priority;
-	if (policy != SCHED_OTHER)
+	if ((policy != SCHED_OTHER) && (policy != SCHED_C)) /* HW2- Added SCHED_C cond. */
 		p->prio = MAX_USER_RT_PRIO-1 - p->rt_priority;
 	else
 		p->prio = p->static_prio;
@@ -3527,6 +3530,7 @@ asmlinkage long sys_sched_get_priority_max(int policy)
 	case SCHED_RR:
 		ret = MAX_USER_RT_PRIO-1;
 		break;
+	case SCHED_C: /* HW2- Added SCHED_C cond. */
 	case SCHED_OTHER:
 		ret = 0;
 		break;
@@ -3543,6 +3547,7 @@ asmlinkage long sys_sched_get_priority_min(int policy)
 	case SCHED_RR:
 		ret = 1;
 		break;
+	case SCHED_C: /* HW2- Added SCHED_C cond. */
 	case SCHED_OTHER:
 		ret = 0;
 	}
