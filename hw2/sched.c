@@ -423,17 +423,20 @@
 			 the awaken is with lower PID, we preemeted the current proccess.
  			 TODO: After writing change() function, release the comments.
  		*/
- 		if(/*policy_status == 1 &&*/
-		  rq->curr->policy == SCHED_C p->policy == SCHED_C){
- 			//struct task_struct* lowest = get_lowest_task();
- 			if(p->pid < rq->curr->pid){//lowest->pid >= p->pid){
+ 		if(policy_status == HW2_POLICY_ON && 
+		   rq->curr->policy == SCHED_C && p->policy == SCHED_C){
+			   //if awaken has lower PID:
+ 			if(p->pid < rq->curr->pid){
  				printk("-[*]- Awaken process %d need resched, has lower pid current running (%d)\r\n",p->pid,lowest->pid);
- 				//set_need_resched(p);
+ 				resched_task(rq->curr);
  			}
-
  		}
- 		if (p->prio < rq->curr->prio)
- 			resched_task(rq->curr);
+		else{
+			   //if awaken has higher prio:
+ 			if (p->prio < rq->curr->prio)
+ 				resched_task(rq->curr);
+		}
+		
  		success = 1;
  	}
  	p->state = TASK_RUNNING;
@@ -2463,16 +2466,16 @@ repeat_lock_task:
 			 Here we activate the awaken task if it has the lowest pid_t
 			 TODO: After writing change() function, release the comments.
 		*/
-		if(/*policy_status == 1 &&*/ p->policy == SCHED_C){
+		if(policy_status == HW2_POLICY_ON && p->policy == SCHED_C){
 			struct task_struct* lowest = get_lowest_task();
 			if(lowest->pid >= p->pid){
 				printk("-[*]- Awaken process %d need resched, has lower pid current running (%d)\r\n",p->pid,lowest->pid);
-				//set_need_resched(p);
+				resched_task(rq->curr);
 			}
-
+		}else{
+			if (p->prio < rq->curr->prio)
+				resched_task(rq->curr);
 		}
-		if (p->prio < rq->curr->prio)
-			resched_task(rq->curr);
 		success = 1;
 	}
 	p->state = TASK_RUNNING;
