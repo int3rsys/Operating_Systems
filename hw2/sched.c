@@ -436,7 +436,7 @@
  			if (p->prio < rq->curr->prio)
  				resched_task(rq->curr);
 		}
-		
+
  		success = 1;
  	}
  	p->state = TASK_RUNNING;
@@ -4033,6 +4033,10 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
 	return 0;
 }
 
+////////////////////////////SYSTEM CALLS//////////////////////////////////
+/*
+ * Make Changeable system call.
+ */
 int sys_make_changeable(pid_t pid){
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
@@ -4052,7 +4056,9 @@ int sys_make_changeable(pid_t pid){
   printk("[*] target(%d) is now a SC process. It's the only one, so global policy is OFF\r\n", pid);
   return 0;
 }
-
+/*
+ * Is Changeable system call.
+ */
 int sys_is_changeable(pid_t pid){
   struct task_struct* target = find_task_by_pid(pid);
   if(target == NULL){
@@ -4060,15 +4066,32 @@ int sys_is_changeable(pid_t pid){
   }
   return target->policy==SCHED_C;
 }
-
+/*
+ * Change system call.
+ */
 int sys_change(int val){
 
-  if(policy_on == 1){
-    return -ESRCH;
-  }
+	if (val != 0 && val != 1) return -EINVAL;
+	
+	if(val == 1){
+  		policy_status = HW2_POLICY_ON;
+	}else{
+  		policy_status = HW2_POLICY_OFF;
+	}
+
   return 0;
 }
+/*
+ * Get Policy system call.
+ */
+int sys_get_policy(pid_t pid){
+  struct task_struct* target = find_task_by_pid(pid);
+  if(target == NULL) return -ESRCH;
+  if(target->policy != SCHED_C) return -EINVAL;
 
+  return policy_status;
+}
+//////////////////////////////////////////////////////////////////////////
 inline struct task_struct* get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
@@ -4089,7 +4112,7 @@ inline struct task_struct* get_lowest_task(){
 	return lowest;
 
 }
-
+//////////////////////////////////////////////////////////////////////////
 
 #ifdef CONFIG_LOLAT_SYSCTL
 struct low_latency_enable_struct __enable_lowlatency = { 0, };
