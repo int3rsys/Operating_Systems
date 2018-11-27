@@ -33,3 +33,33 @@ int make_changeable(pid_t pid){
     }
     return res;
 }
+
+int change(int val){
+   int res;
+
+    __asm__(
+    "int $0x80;"
+    : "=a" (res)
+    : "0" (245), "b"(val)
+    );
+    if ((res) < 0){
+      errno = -(res);
+      res = -1;
+    }
+    return res;
+}
+
+int get_policy(pid_t pid){
+   int res;
+
+    __asm__(
+    "int $0x80;"
+    : "=a" (res)
+    : "0" (246), "b"(pid)
+    );
+    if ((res) < 0){
+      errno = -(res);
+      res = -1;
+    }
+    return res;
+}
