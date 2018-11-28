@@ -2001,6 +2001,8 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
  * Make Changeable system call.
  */
 int sys_make_changeable(pid_t pid){
+	int sches = 0,sches_running = 0;
+	struct list_head *process_l;
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
   //Errors Check:
@@ -2025,9 +2027,22 @@ int sys_make_changeable(pid_t pid){
 			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
 		}
 	}
+
+	list_for_each(process_l, rq->sc->queue) {
+		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		sches++;
+		if(curr->state==TASK_RUNNING)
+			sches_running++;
+		
+		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		printk("[***] [%d] of them are running.\r\n", sches_running);
+	}
+
 	spin_unlock_irq(rq);
 
   printk("[*] target(%d) is now a SC process.\r\n", pid);
+
+
   return 0;
 }
 /*
