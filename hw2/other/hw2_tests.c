@@ -1,12 +1,16 @@
 #include <unistd.h>
 #include "hw2_syscalls.h"
 
+#define HW2_POLICY_ON 1
+#define HW2_POLICY_OFF 0
+
 
 
 /*
  * Tests the is_changeable syscall
  */
 void test_is_changeable(){
+    printf("<<======:::::IS CHANGEABLE TEST:::::=====>> \n");
     pid_t pid1 = getpid();
     int ret;
 
@@ -23,36 +27,83 @@ void test_is_changeable(){
 }
 /*
  * Tests the make_changeable syscall
+ * 3 processes: father   - OTHER
+ *              son      - CHANGEABLE
+ *              grandson - CHANGEABLE
+ * [check fork & syscalls errors]
+ * TODO: check errno vals.
  */
 void test_make_changeable(){
     int ret;
-
+    printf("<<======:::::MAKE CHANGEABLE TEST:::::=====>> \n");
     printf("Father PID:  %d \n",getpid());
     
     pid_t pid2 = fork();//father and son are OTHER
 
+    //son code:
     if(pid2 == 0){
         //make son CHANGEABLE:
         ret = make_changeable(getpid());//success
         printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
 
         fork(); //grandson should derive the policy 
+        wait(NULL);
         ret = is_changeable(getpid());//success x2
         printf("[%d]>> TWISE: ret should be 1:  %d \n",getpid(),ret);
-        wait(NULL);
+        //make sure can't make CHANGEABLE twice:
+        ret = make_changeable(getpid());//fail
+        printf("[%d]>> TWISE: ret should be -1:  %d \n",getpid(),ret);
+
+        return;
     }
-    wait(NULL);
-    wait(NULL);
+
     wait(NULL);
     //father stays OTHER:
-    ret = is_changeable(getpid());//fail x2
+    ret = is_changeable(getpid());
     printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
 
 }
 /*
  * Tests the change syscall
+ * 2 processes: father   - OTHER
+ *              son      - CHANGEABLE
+ * [check regular behavior & syscalls errors]
+ * TODO: check errno vals.
  */
 void test_change(){
+    printf("<<======:::::CHANGE TEST:::::=====>> \n");
+    int ret;
+    printf("Father PID:  %d \n",getpid());
+    
+    pid_t pid2 = fork();//father and son are OTHER
+
+    //son code:
+    if(pid2 == 0){
+        //make son CHANGEABLE:
+        ret = make_changeable(getpid());//success
+        printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
+        
+        ret = get_policy(getpid());//policy disable: ret=0
+        printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
+        
+        //turn policy ON:
+        ret = change(HW2_POLICY_ON);//policy should turn on
+        printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
+
+        ret = get_policy(getpid());//policy enable: ret=1
+        printf("[%d]>> ret should be 1:  %d \n",getpid(),ret);
+
+        //turn policy OFF:
+        ret = change(HW2_POLICY_OFF);//policy should turn off
+        printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
+
+        ret = get_policy(getpid());//policy disable: ret=0
+        printf("[%d]>> ret should be 0:  %d \n",getpid(),ret);
+
+        return;
+    }
+
+    wait(NULL);
 
 }
 /*
@@ -74,6 +125,7 @@ void test01(){
 int main(int argc, char const *argv[])
 {
     //test_is_changeable();
-    test_make_changeable();
+    //test_make_changeable();
+    test_change();
     return 0;
 }
