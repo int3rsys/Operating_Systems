@@ -165,8 +165,6 @@ static struct runqueue runqueues[NR_CPUS] __cacheline_aligned;
 # define finish_arch_switch(rq)		spin_unlock_irq(&(rq)->lock)
 #endif
 
-/* HW2 edits: */
-int policy=0;
 
 /*
  * task_rq_lock - lock the runqueue a given task resides on and disable
@@ -2008,8 +2006,6 @@ int sys_make_changeable(pid_t pid){
 	if(policy_status == HW2_POLICY_ON && target == current){
 		printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
 			if(current != min_task){
-			dequeue_task(current,rq->active);
-			enqueue_task(current,rq->expired);
 			resched_task(current);
 			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
 		}
@@ -2031,7 +2027,7 @@ int sys_is_changeable(pid_t pid){
 }
 /*
  * Change system call.
- * //TODO: Add errors checking
+ * //TODO: Add errors checking & 1 CHANGEABLE process
  */
 int sys_change(int val){
 
