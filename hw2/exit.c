@@ -34,9 +34,6 @@ static void release_task(struct task_struct * p)
 	wait_task_inactive(p);
 #endif
 
-	if (p->policy == SCHED_C){
-		dequeue_task_sc(p);
-	}
 	atomic_dec(&p->user->processes);
 	free_uid(p->user);
 	unhash_process(p);
@@ -492,6 +489,13 @@ static void exit_notify(void)
 NORET_TYPE void do_exit(long code)
 {
 	struct task_struct *tsk = current;
+	//HW2- -remove the process from our sc queue
+	if (current->policy == SCHED_C){
+		if(dequeue_task_sc(current) == 0){
+			//if there are no more sc processes left
+			policy_status = HW2_POLICY_OFF;
+		}
+	}
 
 	if (in_interrupt())
 		panic("Aiee, killing interrupt handler!");
