@@ -236,7 +236,7 @@ int dequeue_task_sc(struct task_struct *p){
 }
 
 inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
-	printk("[*] process %d is added to SC list\n\r", p->pid);
+	printk("[*] ENQUEUE: process %d is added to SC list\n\r", p->pid);
 	list_add_tail(&p->run_list_sc, array->queue);
 	array->nr_active++;
 	p->array_sc = array;
@@ -463,13 +463,31 @@ void wake_up_forked_process(task_t * p)
 	}
 	p->cpu = smp_processor_id();
 	activate_task(p, rq);
+	
 	/* HW2 edit:
 		Because the forked process was created now, we want to add it seperately to
 		our SC list
 	*/
 	if(current->policy == SCHED_C){
-		spin_lock_irq(rq);
+		int sches = 0,sches_running = 0;
+		struct list_head *process_l;
+		struct task_struct* curr;
+
+		spin_lock_irq(rq);//<<---Deadlock possible?
 		enqueue_task_sc(p, rq->sc);
+
+
+		//DEBUG----
+		list_for_each(process_l, rq->sc->queue) {
+			curr = list_entry(process_l, struct task_struct, run_list_sc);
+			sches++;
+			if(curr->state==TASK_RUNNING)
+				sches_running++;
+		}
+		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		printk("[***] [%d] of them are running.\r\n", sches_running);
+		//---------
+
 		spin_unlock_irq(eq);
 		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
 		//get_lowest_task();
@@ -2092,13 +2110,18 @@ int sys_get_policy(pid_t pid){
 inline struct task_struct* get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
-	struct task_struct* lowest=current;
+	struct task_struct* lowest;
 	struct list_head *process_l;
+	int i=0;
 
 	spin_lock_irq(rq);
 	printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		if(i==0 && curr->state == TASK_RUNNING){
+			i++;
+			lowest = curr;
+		}
 		if(lowest->pid > curr->pid && curr->state==TASK_RUNNING){
 			lowest = curr;
 		}
@@ -2109,6 +2132,8 @@ inline struct task_struct* get_lowest_task(){
 	return lowest;
 
 }
+
+
 //////////////////////////////////////////////////////////////////////////
 
 #ifdef CONFIG_LOLAT_SYSCTL
