@@ -408,7 +408,7 @@ repeat_lock_task:
 			 the awaken is with lower PID, we preemeted the current proccess.
  			 TODO: After writing change() function, release the comments.
  		*/
- 		if(policy_status == HW2_POLICY_ON && 
+ 		if(policy_status == HW2_POLICY_ON &&
 		   rq->curr->policy == SCHED_C && p->policy == SCHED_C){
 			   //if awaken has lower PID:
  			if(p->pid < rq->curr->pid){
@@ -892,6 +892,8 @@ need_resched:
 	case TASK_RUNNING:
 		;
 	}
+
+pick_next_task_2: //HW2 edit
 #if CONFIG_SMP
 pick_next_task:
 #endif
@@ -920,6 +922,19 @@ pick_next_task:
 	idx = sched_find_first_bit(array->bitmap);
 	queue = array->queue + idx;
 	next = list_entry(queue->next, task_t, run_list);
+	/* HW2 edit:
+		if next task is SCHED_C and is not lowest, we don't switch
+	*/
+	if(policy_status == 1 && next->policy == SCHED_C){
+ 		task_t* lowest_task = get_lowest_task();
+  		if(lowest_task->pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
+ 			printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
+			 //Evict the proccess to the expired:
+ 			dequeue_task(next,rq->active);
+ 			enqueue_task(next,rq->expired);
+ 			goto pick_next_task_2;
+ 		}
+ 	}
 
 switch_tasks:
 	prefetch(next);
@@ -2001,7 +2016,7 @@ int sys_make_changeable(pid_t pid){
   target->policy=SCHED_C;
 	spin_lock_irq(rq);
 	enqueue_task_sc(target,rq->sc);
-	
+
 	//Preempted Check:
 	if(policy_status == HW2_POLICY_ON && target == current){
 		printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
@@ -2032,7 +2047,7 @@ int sys_is_changeable(pid_t pid){
 int sys_change(int val){
 
 	if (val != 0 && val != 1) return -EINVAL;
-	
+
 	if(val == 1){
   		policy_status = HW2_POLICY_ON;
 	}else{
