@@ -1990,20 +1990,33 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
 int sys_make_changeable(pid_t pid){
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
-  // NOTE: check case when target==NULL ****
-
+  //Errors Check:
   if(target == NULL){
     return -ESRCH;
   }
   if(current->policy == SCHED_C || target->policy == SCHED_C){
-    return -ESRCH;
+    return -EINVAL;
   }
+  //Enqueue:
+  struct task_struct* min_task = get_lowest_task();
 
   target->policy=SCHED_C;
 	spin_lock_irq(rq);
 	enqueue_task_sc(target,rq->sc);
+	
+	//Preempted Check:
+	if(policy_status == HW2_POLICY_ON && target == current){
+		printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
+			if(current != min_task){
+			dequeue_task(current,rq->active);
+			enqueue_task(current,rq->expired);
+			resched_task(current);
+			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
+		}
+	}
 	spin_unlock_irq(rq);
-  printk("[*] target(%d) is now a SC process. It's the only one, so global policy is OFF\r\n", pid);
+
+  printk("[*] target(%d) is now a SC process.\r\n", pid);
   return 0;
 }
 /*
@@ -2018,6 +2031,7 @@ int sys_is_changeable(pid_t pid){
 }
 /*
  * Change system call.
+ * //TODO: Add errors checking
  */
 int sys_change(int val){
 
@@ -2042,6 +2056,7 @@ int sys_get_policy(pid_t pid){
   return policy_status;
 }
 //////////////////////////////////////////////////////////////////////////
+/* Returns the task with lowest PID. USES SPINLOCK ON RQ */
 inline struct task_struct* get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
