@@ -1450,6 +1450,11 @@ out_unlock:
 
 asmlinkage long sys_sched_yield(void)
 {
+	/* HW2 edit: */
+	if(rq->curr->policy == SCHED_C && policy_status==HW2_POLICY_ON){
+		printk("[*] A SC process tried to execute sched_yield()\r\n");
+		return 0;
+	}
 	runqueue_t *rq = this_rq_lock();
 	prio_array_t *array = current->array;
 	int i;
