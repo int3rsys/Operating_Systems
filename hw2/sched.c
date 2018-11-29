@@ -231,7 +231,7 @@ int dequeue_task_sc(struct task_struct *p){
 		if(rq->sc->nr_active == 0) ret = 0;
 		list_del(&p->run_list_sc);
 		spin_unlock_irq(rq);
-		printk("[*] process %d is removed from the SC list\n\r", p->pid);
+		printk("[*] DEQUEUE process %d is removed from the SC list\n\r", p->pid);
 		return ret;
 }
 
