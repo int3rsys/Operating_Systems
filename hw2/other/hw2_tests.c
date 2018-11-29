@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <sys/wait.h>
+
 #include "hw2_syscalls.h"
 
 #define HW2_POLICY_ON 1
@@ -118,6 +120,50 @@ void test_get_policy(){
  * 1 OTHER with high priority
  * 
  */
+void test_make_changeable_preempted(){
+    int ret, i = 0;
+    //int stat;
+    pid_t pid, father = getpid();
+    pid_t pids[3]; 
+    printf("<<======:::::MAKE CHANGEABLE PREEMPTED TEST:::::=====>> \n");
+    printf("Father PID:  %d \n",getpid());
+    
+    ret = change(HW2_POLICY_ON);
+    printf("Change: ret should be 0:  %d \n",ret);
+
+    ret = make_changeable(getpid()); //make it changeable!
+    printf("[%d]>> ret should be 0:  %d \n",getpid(),ret); 
+
+    while(i<2){
+        pid = fork();
+        if(pid != 0)//if father, break
+            break;
+        //enter son into the array: 
+        pids[i] = getpid();
+        printf(">>Add [%d] to the array. \n",getpid());
+        i++;
+    }
+    wait(NULL);
+    
+//Now there are: 2 CHANGEABLEs , 1 OTHER
+    //father < pid[0] < pid[1] 
+    //if(getpid() == pids[i]){//the last son run first
+    printf("[%d] went to sleep. \n",getpid());
+        sleep(10);
+    printf("[%d] now running. \n",getpid());
+        waitpid(pids[0],NULL,WNOHANG);//wake first son
+    printf("[%d] >>now running. \n",getpid()); 
+    //}
+    //sched_yield();
+    sleep(2);
+    wait(NULL);
+}
+/*
+ * Policy Test 01:
+ * 2 SC processes
+ * 1 OTHER with high priority
+ * 
+ */
 void test01(){
 
 }
@@ -126,6 +172,7 @@ int main(int argc, char const *argv[])
 {
     //test_is_changeable();
     //test_make_changeable();
-    test_change();
+    //test_change();
+    test_make_changeable_preempted();
     return 0;
 }

@@ -135,6 +135,7 @@ struct prio_array {
 
 /* HW2- declaration of policy status: */
 int policy_status;
+inline struct task_struct* get_lowest_task(void);
 struct runqueue {
 	spinlock_t lock;
 	unsigned long nr_running, nr_switches, expired_timestamp;
@@ -222,17 +223,20 @@ static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
 		__clear_bit(p->prio, array->bitmap);
 }
 /* HW2 edit */
-inline void dequeue_task_sc(struct task_struct *p){
+int dequeue_task_sc(struct task_struct *p){
+		int ret = 1;
 		runqueue_t *rq = this_rq();
 		spin_lock_irq(rq);
 		rq->sc->nr_active--;
+		if(rq->sc->nr_active == 0) ret = 0;
 		list_del(&p->run_list_sc);
 		spin_unlock_irq(rq);
-		printk("[*] process %d is removed from the SC list\n\r", p->pid);
+		printk("[*] DEQUEUE process %d is removed from the SC list\n\r", p->pid);
+		return ret;
 }
 
 inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
-	printk("[*] process %d is added to SC list\n\r", p->pid);
+	printk("[*] ENQUEUE: process %d is added to SC list\n\r", p->pid);
 	list_add_tail(&p->run_list_sc, array->queue);
 	array->nr_active++;
 	p->array_sc = array;
@@ -459,13 +463,31 @@ void wake_up_forked_process(task_t * p)
 	}
 	p->cpu = smp_processor_id();
 	activate_task(p, rq);
+	
 	/* HW2 edit:
 		Because the forked process was created now, we want to add it seperately to
 		our SC list
 	*/
 	if(current->policy == SCHED_C){
-		spin_lock_irq(rq);
+		int sches = 0,sches_running = 0;
+		struct list_head *process_l;
+		struct task_struct* curr;
+
+		spin_lock_irq(rq);//<<---Deadlock possible?
 		enqueue_task_sc(p, rq->sc);
+
+
+		//DEBUG----
+		list_for_each(process_l, rq->sc->queue) {
+			curr = list_entry(process_l, struct task_struct, run_list_sc);
+			sches++;
+			if(curr->state==TASK_RUNNING)
+				sches_running++;
+		}
+		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		printk("[***] [%d] of them are running.\r\n", sches_running);
+		//---------
+
 		spin_unlock_irq(eq);
 		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
 		//get_lowest_task();
@@ -925,7 +947,7 @@ pick_next_task:
 	/* HW2 edit:
 		if next task is SCHED_C and is not lowest, we don't switch
 	*/
-	if(policy_status == 1 && next->policy == SCHED_C){
+	if(policy_status == HW2_POLICY_ON && next->policy == SCHED_C){
  		task_t* lowest_task = get_lowest_task();
   		if(lowest_task->pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
  			printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
@@ -2006,6 +2028,9 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
  * Make Changeable system call.
  */
 int sys_make_changeable(pid_t pid){
+	int sches = 0,sches_running = 0;
+	struct list_head *process_l;
+	struct task_struct* curr;
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
   //Errors Check:
@@ -2030,9 +2055,23 @@ int sys_make_changeable(pid_t pid){
 			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
 		}
 	}
+	//DEBUG-
+	list_for_each(process_l, rq->sc->queue) {
+		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		sches++;
+		if(curr->state==TASK_RUNNING)
+			sches_running++;
+		
+	}
+
+		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		printk("[***] [%d] of them are running.\r\n", sches_running);
+
 	spin_unlock_irq(rq);
 
   printk("[*] target(%d) is now a SC process.\r\n", pid);
+
+
   return 0;
 }
 /*
@@ -2076,13 +2115,18 @@ int sys_get_policy(pid_t pid){
 inline struct task_struct* get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
-	struct task_struct* lowest=current;
+	struct task_struct* lowest;
 	struct list_head *process_l;
+	int i=0;
 
 	spin_lock_irq(rq);
 	printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
+		if(i==0 && curr->state == TASK_RUNNING){
+			i++;
+			lowest = curr;
+		}
 		if(lowest->pid > curr->pid && curr->state==TASK_RUNNING){
 			lowest = curr;
 		}
@@ -2093,6 +2137,8 @@ inline struct task_struct* get_lowest_task(){
 	return lowest;
 
 }
+
+
 //////////////////////////////////////////////////////////////////////////
 
 #ifdef CONFIG_LOLAT_SYSCTL
