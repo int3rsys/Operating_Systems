@@ -444,7 +444,7 @@ void wake_up_forked_process(task_t * p)
 
 	p->state = TASK_RUNNING;
 	/* HW2 edit: */
-	if(current->policy == SCHED_C){
+	if(policy_status == HW2_POLICY_ON && current->policy == SCHED_C){
 		printk("	[*] Before fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
 		p->static_prio = current->static_prio;
 		p->time_slice = (current->time_slice / 2)+(current->time_slice % 2);
@@ -473,7 +473,7 @@ void wake_up_forked_process(task_t * p)
 		struct list_head *process_l;
 		struct task_struct* curr;
 
-		spin_lock_irq(rq);//<<---Deadlock possible?
+		//spin_lock_irq(rq);//<<---Deadlock possible?
 		enqueue_task_sc(p, rq->sc);
 
 
@@ -484,11 +484,12 @@ void wake_up_forked_process(task_t * p)
 			if(curr->state==TASK_RUNNING)
 				sches_running++;
 		}
+		printk("[***] Regim is [%d]. \r\n", policy_status);
 		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
 		printk("[***] [%d] of them are running.\r\n", sches_running);
 		//---------
 
-		spin_unlock_irq(eq);
+		//spin_unlock_irq(eq);
 		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
 		//get_lowest_task();
 	}
@@ -1472,15 +1473,18 @@ out_unlock:
 
 asmlinkage long sys_sched_yield(void)
 {
-	/* HW2 edit: */
-	if(rq->curr->policy == SCHED_C && policy_status==HW2_POLICY_ON){
-		printk("[*] A SC process tried to execute sched_yield()\r\n");
-		return 0;
-	}
 	runqueue_t *rq = this_rq_lock();
 	prio_array_t *array = current->array;
 	int i;
 
+	/* HW2 edit: */
+	if(rq->curr->policy == SCHED_C && policy_status==HW2_POLICY_ON){
+		printk("[*] A SC process tried to execute sched_yield()\r\n");
+		spin_unlock(&rq->lock);
+		return 0;
+	}
+	
+	
 	if (unlikely(rt_task(current))) {
 		list_del(&current->run_list);
 		list_add_tail(&current->run_list, array->queue + current->prio);
