@@ -652,7 +652,7 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 		goto bad_fork_cleanup;
 
 	INIT_LIST_HEAD(&p->run_list);
-	/* HW1 edit: */
+	/* HW2 edit: */
 	INIT_LIST_HEAD(&p->run_list_sc);
 
 	p->p_cptr = NULL;
@@ -780,11 +780,24 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	++total_forks;
 	if (clone_flags & CLONE_VFORK)
 		wait_for_completion(&vfork);
-	else
-		/*
-		 * Let the child process run first, to avoid most of the
-		 * COW overhead when the child exec()s afterwards.
-		 */
+	/* HW2 edit:
+		 Because of clarification mail, we don't let the child to run
+		 if it has a higher PID than it's fathers.
+		 ** We assume that the father process is the lowest to the current
+		 moment of forking?? **
+
+	*/
+	else if(policy_status == HW2_POLICY_ON && current->policy == SCHED_C &&
+		p->pid < current->pid)
+	/*
+	 * Let the child process run first, to avoid most of the
+	 * COW overhead when the child exec()s afterwards.
+	 */
+		current->need_resched = 1;
+	/* HW2 edit: if we get to this case, we basically treat the forked process
+							 as OTHER, thus we let the fork run as was written originally
+	*/
+	else if(policy_status == HW2_POLICY_OFF || current->policy != SCHED_C)
 		current->need_resched = 1;
 
 fork_out:
