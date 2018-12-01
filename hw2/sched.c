@@ -807,6 +807,9 @@ static inline void idle_tick(void)
  */
 void scheduler_tick(int user_tick, int system)
 {
+	/* HW2- dont execute if regim is on */
+	if(policy_status == HW2_POLICY_ON) return;
+
 	int cpu = smp_processor_id();
 	runqueue_t *rq = this_rq();
 	task_t *p = current;
@@ -945,6 +948,7 @@ pick_next_task:
 	idx = sched_find_first_bit(array->bitmap);
 	queue = array->queue + idx;
 	next = list_entry(queue->next, task_t, run_list);
+
 	/* HW2 edit:
 		if next task is SCHED_C and is not lowest, we don't switch
 	*/
@@ -2093,11 +2097,25 @@ int sys_is_changeable(pid_t pid){
  * //TODO: Add errors checking & 1 CHANGEABLE process
  */
 int sys_change(int val){
-
+	runqueue_t *rq = this_rq();
 	if (val != 0 && val != 1) return -EINVAL;
 
 	if(val == 1){
-  		policy_status = HW2_POLICY_ON;
+		//Turn-on only if there are atleast one CHANGABALE in the system:
+		spin_lock_irq(rq);//<<--Needed?
+		if(rq->sc->nr_active < 0){
+			printk("[*]CHANGE: There are no SC processes.\r\n", pid);
+			return 0;
+		}
+		spin_unlock_irq(rq);
+		policy_status = HW2_POLICY_ON;
+		//Check if preemted is need:
+		struct task_struct* min_task = get_lowest_task();
+		if(current != min_task){
+			resched_task(current);
+			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
+		}
+	}
 	}else{
   		policy_status = HW2_POLICY_OFF;
 	}
