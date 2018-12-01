@@ -2104,7 +2104,7 @@ int sys_change(int val){
 		//Turn-on only if there are atleast one CHANGABALE in the system:
 		spin_lock_irq(rq);//<<--Needed?
 		if(rq->sc->nr_active < 0){
-			printk("[*]CHANGE: There are no SC processes.\r\n", pid);
+			printk("[*]CHANGE: There are no SC processes.\r\n");
 			return 0;
 		}
 		spin_unlock_irq(rq);
@@ -2113,9 +2113,8 @@ int sys_change(int val){
 		struct task_struct* min_task = get_lowest_task();
 		if(current != min_task){
 			resched_task(current);
-			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
+			printk("[*]>> current(%d) resched flag turnd on.\r\n", current->pid);
 		}
-	}
 	}else{
   		policy_status = HW2_POLICY_OFF;
 	}
