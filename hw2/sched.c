@@ -954,6 +954,9 @@ pick_next_task:
  			printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
 			 //Evict the proccess to the expired:
  			dequeue_task(next,rq->active);
+			/* Accordingly to : https://piazza.com/class/jn51bvu2pbq4v8?cid=153
+				We should update the expired_timestamp */
+			rq->expired_timestamp=jiffies;
  			enqueue_task(next,rq->expired);
  			goto pick_next_task_2;
  		}
@@ -2100,6 +2103,17 @@ prio_array_t* sc_queue = this_rq()->sc;
 	if (val != 0 && val != 1) return -EINVAL;
 	if(val == 1 && sc_queue->nr_active > 1 /* ____________Further check needed____________ */){
   		policy_status = HW2_POLICY_ON;
+
+			/* New check added as described in last update in piazza */
+
+			struct task_struct* target = find_task_by_pid(pid);
+			struct task_struct* min_task = get_lowest_task();
+			//Preempted Check:
+			printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
+			if(current != min_task){
+				resched_task(current);
+				printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
+			}
 	}else{
   		policy_status = HW2_POLICY_OFF;
 	}
