@@ -463,7 +463,7 @@ void wake_up_forked_process(task_t * p)
 	}
 	p->cpu = smp_processor_id();
 	activate_task(p, rq);
-	
+
 	/* HW2 edit:
 		Because the forked process was created now, we want to add it seperately to
 		our SC list
@@ -1483,8 +1483,8 @@ asmlinkage long sys_sched_yield(void)
 		spin_unlock(&rq->lock);
 		return 0;
 	}
-	
-	
+
+
 	if (unlikely(rt_task(current))) {
 		list_del(&current->run_list);
 		list_add_tail(&current->run_list, array->queue + current->prio);
@@ -2044,6 +2044,9 @@ int sys_make_changeable(pid_t pid){
   if(current->policy == SCHED_C || target->policy == SCHED_C){
     return -EINVAL;
   }
+	if(target->prio < 100){
+		return -1; //We don't change RT processes
+	}
   //Enqueue:
   struct task_struct* min_task = get_lowest_task();
 
@@ -2065,7 +2068,7 @@ int sys_make_changeable(pid_t pid){
 		sches++;
 		if(curr->state==TASK_RUNNING)
 			sches_running++;
-		
+
 	}
 
 		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
@@ -2093,10 +2096,9 @@ int sys_is_changeable(pid_t pid){
  * //TODO: Add errors checking & 1 CHANGEABLE process
  */
 int sys_change(int val){
-
+prio_array_t* sc_queue = this_rq()->sc;
 	if (val != 0 && val != 1) return -EINVAL;
-
-	if(val == 1){
+	if(val == 1 && sc_queue->nr_active > 1 /* ____________Further check needed____________ */){
   		policy_status = HW2_POLICY_ON;
 	}else{
   		policy_status = HW2_POLICY_OFF;
