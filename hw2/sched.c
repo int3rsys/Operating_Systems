@@ -240,7 +240,7 @@ inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
 	//printk("[*] ENQUEUE: process %d is added to SC list\n\r", p->pid);
 	list_add_tail(&p->run_list_sc, array->queue);
 	array->nr_active++;
-	p->array_sc = array;
+	//p->array_sc = array;
 }
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
@@ -471,21 +471,21 @@ void wake_up_forked_process(task_t * p)
 		our SC list
 	*/
 	if(current->policy == SCHED_C){
-		int sches = 0,sches_running = 0;
-		struct list_head *process_l;
-		struct task_struct* curr;
+		//int sches = 0,sches_running = 0;
+		//struct list_head *process_l;
+		//struct task_struct* curr;
 
 		//spin_lock_irq(rq);//<<---Deadlock possible?
 		enqueue_task_sc(p, rq->sc);
 
 
 		//DEBUG----
-		list_for_each(process_l, rq->sc->queue) {
+/* 		list_for_each(process_l, rq->sc->queue) {
 			curr = list_entry(process_l, struct task_struct, run_list_sc);
 			sches++;
 			if(curr->state==TASK_RUNNING)
 				sches_running++;
-		}
+		} */
 		//printk("[***] Regim is [%d]. \r\n", policy_status);
 		//printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
 		//printk("[***] [%d] of them are running.\r\n", sches_running);
@@ -817,9 +817,11 @@ void scheduler_tick(int user_tick, int system)
 	/* HW2- dont execute if regim is on */
 	if(current->policy == SCHED_C &&
 	   policy_status == HW2_POLICY_ON && 
-	   rq->sc->nr_active > 1) return;
-	/* TODO: Check if its the only one */
-
+	   rq->sc->nr_active > 1) {
+		   //printk("Tick is disabled for CHANGEABLEs. \r\n");
+		   return;
+	   }
+	/* -------------------------------- */
 
 	if (p == rq->idle) {
 		if (local_bh_count(cpu) || local_irq_count(cpu) > 1)
@@ -901,6 +903,7 @@ asmlinkage void schedule(void)
 	prio_array_t *array;
 	list_t *queue;
 	int idx;
+	pid_t lowest_pid;
 
 	if (unlikely(in_interrupt()))
 		BUG();
@@ -926,10 +929,14 @@ need_resched:
 		;
 	}
 
-pick_next_task_2: //HW2 edit
 #if CONFIG_SMP
 pick_next_task:
 #endif
+	//HW2 edit
+	if(policy_status == HW2_POLICY_ON)
+		lowest_pid = get_lowest_task();
+	pick_next_task_2: 
+	//--------
 	if (unlikely(!rq->nr_running)) {
 #if CONFIG_SMP
 		load_balance(rq, 1);
@@ -959,10 +966,14 @@ pick_next_task:
 	/* HW2 edit:
 		if next task is SCHED_C and is not lowest, we don't switch
 	*/
+
+	if(!rt_task(next))
 	if(policy_status == HW2_POLICY_ON && next->policy == SCHED_C){
- 		pid_t lowest_pid = get_lowest_task();
-  		if(lowest_pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
- 			//printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
+ 		//pid_t lowest_pid = get_lowest_task();
+		// lowest_pid = get_lowest_task();
+  		if(next->pid > lowest_pid ){ //next is not the lowest, hence we don't continue to switch_tasks
+ 			
+			//printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
 			 //Evict the proccess to the expired:
  			dequeue_task(next,rq->active);
 			/* Accordingly to : https://piazza.com/class/jn51bvu2pbq4v8?cid=153
@@ -2047,8 +2058,8 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
  * Make Changeable system call.
  */
 int sys_make_changeable(pid_t pid){
-	int sches = 0,sches_running = 0;
-	struct list_head *process_l;
+	//int sches = 0,sches_running = 0;
+	//struct list_head *process_l;
 	struct task_struct* curr;
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
@@ -2079,13 +2090,13 @@ int sys_make_changeable(pid_t pid){
 		}
 	}
 	//DEBUG-
-	list_for_each(process_l, rq->sc->queue) {
+	/* list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
 		sches++;
 		if(curr->state==TASK_RUNNING)
 			sches_running++;
 
-	}
+	} */
 
 		//printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
 		//printk("[***] [%d] of them are running.\r\n", sches_running);
@@ -2152,20 +2163,20 @@ int sys_get_policy(pid_t pid){
 inline pid_t get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
-	pid_t lowest_pid;
+	pid_t lowest_pid=-1;
 	struct list_head *process_l;
-	int i=0;
-
+	
 	spin_lock_irq(rq);
 	//printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
-		if(i==0 && curr->state == TASK_RUNNING){
-			i++;
-			lowest_pid = curr->pid;
-		}
-		if(lowest_pid > curr->pid && curr->state==TASK_RUNNING){
-			lowest_pid = curr->pid;
+		if(curr->state == TASK_RUNNING){
+			if(lowest_pid < 0){
+				lowest_pid = curr->pid;
+			}else{
+				if(curr->pid < lowest_pid)
+					lowest_pid = curr->pid;
+			}
 		}
 		//printk("++PID: %d\r\n", curr->pid);
 	}

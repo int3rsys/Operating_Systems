@@ -450,6 +450,15 @@ static void exit_notify(void)
 	 */
 
 	write_lock_irq(&tasklist_lock);
+	//HW2- -remove the process from our sc queue
+	if (current->policy == SCHED_C){
+		if(dequeue_task_sc(current) == 0){
+			//if there are no more sc processes left
+			policy_status = HW2_POLICY_OFF;
+			//printk("[*][*][%d] Last SC process died. \n\r", current->pid);
+		}
+	}
+	//-------------------------------------------
 	current->state = TASK_ZOMBIE;
 	do_notify_parent(current, current->exit_signal);
 	while (current->p_cptr != NULL) {
@@ -489,15 +498,7 @@ static void exit_notify(void)
 NORET_TYPE void do_exit(long code)
 {
 	struct task_struct *tsk = current;
-	//HW2- -remove the process from our sc queue
-	if (current->policy == SCHED_C){
-		if(dequeue_task_sc(current) == 0){
-			//if there are no more sc processes left
-			policy_status = HW2_POLICY_OFF;
-			//printk("[*][*][%d] Last SC process died. \n\r", current->pid);
-		}
-	}
-
+	
 	if (in_interrupt())
 		panic("Aiee, killing interrupt handler!");
 	if (!tsk->pid)

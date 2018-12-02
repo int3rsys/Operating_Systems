@@ -653,8 +653,9 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 
 	INIT_LIST_HEAD(&p->run_list);
 	/* HW2 edit: */
-	INIT_LIST_HEAD(&p->run_list_sc);
-
+	if(p->policy == SCHED_C)
+		INIT_LIST_HEAD(&p->run_list_sc);
+    /* --------- */
 	p->p_cptr = NULL;
 	init_waitqueue_head(&p->wait_chldexit);
 	p->vfork_done = NULL;
