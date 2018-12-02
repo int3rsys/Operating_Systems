@@ -146,8 +146,15 @@ void test_make_changeable_preempted(){
     wait(NULL);
     
 //Now there are: 2 CHANGEABLEs , 1 OTHER
-    //father < pid[0] < pid[1] 
-    //if(getpid() == pids[i]){//the last son run first
+//father < pid[0] < pid[1] 
+    //
+    if(getpid() == pids[0]){
+
+    }else if (getpid() == pids[1]){
+
+    }else{//father
+
+    }
     printf("[%d] went to sleep. \n",getpid());
         sleep(10);
     printf("[%d] now running. \n",getpid());

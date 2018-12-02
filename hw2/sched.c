@@ -135,7 +135,7 @@ struct prio_array {
 
 /* HW2- declaration of policy status: */
 int policy_status;
-inline struct task_struct* get_lowest_task(void);
+inline pid_t get_lowest_task(void);
 struct runqueue {
 	spinlock_t lock;
 	unsigned long nr_running, nr_switches, expired_timestamp;
@@ -229,14 +229,15 @@ int dequeue_task_sc(struct task_struct *p){
 		spin_lock_irq(rq);
 		rq->sc->nr_active--;
 		if(rq->sc->nr_active == 0) ret = 0;
+		//if(rq->sc->nr_active < 1) policy_status = HW2_POLICY_OFF;
 		list_del(&p->run_list_sc);
 		spin_unlock_irq(rq);
-		printk("[*] DEQUEUE process %d is removed from the SC list\n\r", p->pid);
+		//printk("[*] DEQUEUE process %d is removed from the SC list\n\r", p->pid);
 		return ret;
 }
 
 inline void enqueue_task_sc(struct task_struct *p, prio_array_t *array){
-	printk("[*] ENQUEUE: process %d is added to SC list\n\r", p->pid);
+	//printk("[*] ENQUEUE: process %d is added to SC list\n\r", p->pid);
 	list_add_tail(&p->run_list_sc, array->queue);
 	array->nr_active++;
 	p->array_sc = array;
@@ -416,7 +417,7 @@ repeat_lock_task:
 		   rq->curr->policy == SCHED_C && p->policy == SCHED_C){
 			   //if awaken has lower PID:
  			if(p->pid < rq->curr->pid){
- 				printk("-[*]- Awaken process %d has lower pid, current running (%d) need resched \r\n", p->pid,rq->curr->pid);
+ 				//printk("-[*]- Awaken process %d has lower pid, current running (%d) need resched \r\n", p->pid,rq->curr->pid);
  				resched_task(rq->curr);
  			}
  		}
@@ -445,11 +446,11 @@ void wake_up_forked_process(task_t * p)
 	p->state = TASK_RUNNING;
 	/* HW2 edit: */
 	if(policy_status == HW2_POLICY_ON && current->policy == SCHED_C){
-		printk("	[*] Before fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
+		//printk("	[*] Before fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
 		p->static_prio = current->static_prio;
 		p->time_slice = (current->time_slice / 2)+(current->time_slice % 2);
 		current->time_slice/=2;
-		printk("	[*] After fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
+		//printk("	[*] After fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
 	}
 	if (!rt_task(p)) {
 		/*
@@ -484,14 +485,14 @@ void wake_up_forked_process(task_t * p)
 			if(curr->state==TASK_RUNNING)
 				sches_running++;
 		}
-		printk("[***] Regim is [%d]. \r\n", policy_status);
-		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
-		printk("[***] [%d] of them are running.\r\n", sches_running);
+		//printk("[***] Regim is [%d]. \r\n", policy_status);
+		//printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		//printk("[***] [%d] of them are running.\r\n", sches_running);
 		//---------
 
 		//spin_unlock_irq(eq);
-		printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
-		//get_lowest_task();
+		//printk("[*] Process %d was forked, hence added to sc list as well\r\n",p->pid);
+		
 	}
 
 
@@ -808,8 +809,8 @@ static inline void idle_tick(void)
 void scheduler_tick(int user_tick, int system)
 {
 	/* HW2- dont execute if regim is on */
-	if(policy_status == HW2_POLICY_ON) return;
-
+	if(current->policy == SCHED_C && policy_status == HW2_POLICY_ON) return;
+	/* TODO: Check if its the only one */
 	int cpu = smp_processor_id();
 	runqueue_t *rq = this_rq();
 	task_t *p = current;
@@ -953,9 +954,9 @@ pick_next_task:
 		if next task is SCHED_C and is not lowest, we don't switch
 	*/
 	if(policy_status == HW2_POLICY_ON && next->policy == SCHED_C){
- 		task_t* lowest_task = get_lowest_task();
-  		if(lowest_task->pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
- 			printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
+ 		pid_t lowest_pid = get_lowest_task();
+  		if(lowest_pid < next->pid){ //next is not the lowest, hence we don't continue to switch_tasks
+ 			//printk("[*] Next task is %d but is not the lowest, hence pushed into expired :( \r\n", next->pid);
 			 //Evict the proccess to the expired:
  			dequeue_task(next,rq->active);
  			enqueue_task(next,rq->expired);
@@ -1483,7 +1484,7 @@ asmlinkage long sys_sched_yield(void)
 
 	/* HW2 edit: */
 	if(rq->curr->policy == SCHED_C && policy_status==HW2_POLICY_ON){
-		printk("[*] A SC process tried to execute sched_yield()\r\n");
+		//printk("[*] A SC process tried to execute sched_yield()\r\n");
 		spin_unlock(&rq->lock);
 		return 0;
 	}
@@ -2049,7 +2050,7 @@ int sys_make_changeable(pid_t pid){
     return -EINVAL;
   }
   //Enqueue:
-  struct task_struct* min_task = get_lowest_task();
+  pid_t min_pid = get_lowest_task();
 
   target->policy=SCHED_C;
 	spin_lock_irq(rq);
@@ -2057,10 +2058,10 @@ int sys_make_changeable(pid_t pid){
 
 	//Preempted Check:
 	if(policy_status == HW2_POLICY_ON && target == current){
-		printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
-			if(current != min_task){
+		//printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
+			if(current->pid != min_pid){
 			resched_task(current);
-			printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
+			//printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
 		}
 	}
 	//DEBUG-
@@ -2072,12 +2073,12 @@ int sys_make_changeable(pid_t pid){
 		
 	}
 
-		printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
-		printk("[***] [%d] of them are running.\r\n", sches_running);
+		//printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
+		//printk("[***] [%d] of them are running.\r\n", sches_running);
 
 	spin_unlock_irq(rq);
 
-  printk("[*] target(%d) is now a SC process.\r\n", pid);
+  //printk("[*] target(%d) is now a SC process.\r\n", pid);
 
 
   return 0;
@@ -2104,16 +2105,16 @@ int sys_change(int val){
 		//Turn-on only if there are atleast one CHANGABALE in the system:
 		spin_lock_irq(rq);//<<--Needed?
 		if(rq->sc->nr_active < 0){
-			printk("[*]CHANGE: There are no SC processes.\r\n");
+			//printk("[*]CHANGE: There are no SC processes.\r\n");
 			return 0;
 		}
 		spin_unlock_irq(rq);
 		policy_status = HW2_POLICY_ON;
 		//Check if preemted is need:
-		struct task_struct* min_task = get_lowest_task();
-		if(current != min_task){
+		pid_t min_pid = get_lowest_task();
+		if(current->pid != min_pid){
 			resched_task(current);
-			printk("[*]>> current(%d) resched flag turnd on.\r\n", current->pid);
+			//printk("[*]>> current(%d) resched flag turnd on.\r\n", current->pid);
 		}
 	}else{
   		policy_status = HW2_POLICY_OFF;
@@ -2133,29 +2134,30 @@ int sys_get_policy(pid_t pid){
 }
 //////////////////////////////////////////////////////////////////////////
 /* Returns the task with lowest PID. USES SPINLOCK ON RQ */
-inline struct task_struct* get_lowest_task(){
+inline pid_t get_lowest_task(){
 	runqueue_t *rq = this_rq();
 	struct task_struct* curr;
-	struct task_struct* lowest;
+	pid_t lowest_pid;
 	struct list_head *process_l;
 	int i=0;
 
 	spin_lock_irq(rq);
-	printk("------------- Printing tasks from SC -------------\r\n");
+	//printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
 		if(i==0 && curr->state == TASK_RUNNING){
 			i++;
-			lowest = curr;
+			lowest_pid = curr->pid;
 		}
-		if(lowest->pid > curr->pid && curr->state==TASK_RUNNING){
-			lowest = curr;
+		if(lowest_pid > curr->pid && curr->state==TASK_RUNNING){
+			lowest_pid = curr->pid;
 		}
-		printk("++PID: %d\r\n", curr->pid);
+		//printk("++PID: %d\r\n", curr->pid);
 	}
-	printk("		[*] Lowest PID is: %d\r\n", lowest->pid);
+	//printk("		[*] Lowest PID is: %d\r\n", lowest_pid);
 	spin_unlock_irq(rq);
-	return lowest;
+
+	return lowest_pid;
 
 }
 
