@@ -494,7 +494,7 @@ NORET_TYPE void do_exit(long code)
 		if(dequeue_task_sc(current) == 0){
 			//if there are no more sc processes left
 			policy_status = HW2_POLICY_OFF;
-			printk("[*][*][%d] Last SC process died. \n\r", current->pid);
+			//printk("[*][*][%d] Last SC process died. \n\r", current->pid);
 		}
 	}
 

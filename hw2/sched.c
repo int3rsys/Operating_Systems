@@ -450,6 +450,7 @@ void wake_up_forked_process(task_t * p)
 		p->static_prio = current->static_prio;
 		p->time_slice = (current->time_slice / 2)+(current->time_slice % 2);
 		current->time_slice/=2;
+		if(current->time_slice == 0) current->time_slice = 1;
 		//printk("	[*] After fork, child static_prio: %d, time_slice: %d, Parents time_slice: %d\r\n",p->static_prio,p->time_slice,current->time_slice);
 	}
 	if (!rt_task(p)) {
@@ -808,12 +809,17 @@ static inline void idle_tick(void)
  */
 void scheduler_tick(int user_tick, int system)
 {
-	/* HW2- dont execute if regim is on */
-	if(current->policy == SCHED_C && policy_status == HW2_POLICY_ON) return;
-	/* TODO: Check if its the only one */
+	
 	int cpu = smp_processor_id();
 	runqueue_t *rq = this_rq();
 	task_t *p = current;
+
+	/* HW2- dont execute if regim is on */
+	if(current->policy == SCHED_C &&
+	   policy_status == HW2_POLICY_ON && 
+	   rq->sc->nr_active > 1) return;
+	/* TODO: Check if its the only one */
+
 
 	if (p == rq->idle) {
 		if (local_bh_count(cpu) || local_irq_count(cpu) > 1)
@@ -1487,7 +1493,7 @@ asmlinkage long sys_sched_yield(void)
 	int i;
 
 	/* HW2 edit: */
-	if(rq->curr->policy == SCHED_C && policy_status==HW2_POLICY_ON){
+	if(rq->curr->policy == SCHED_C){
 		//printk("[*] A SC process tried to execute sched_yield()\r\n");
 		spin_unlock(&rq->lock);
 		return 0;
