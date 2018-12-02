@@ -961,7 +961,8 @@ pick_next_task:
  			dequeue_task(next,rq->active);
 			/* Accordingly to : https://piazza.com/class/jn51bvu2pbq4v8?cid=153
 				We should update the expired_timestamp */
-			rq->expired_timestamp=jiffies;
+			if(!rq->expired_timestamp)	
+				rq->expired_timestamp=jiffies;
  			enqueue_task(next,rq->expired);
  			goto pick_next_task_2;
  		}
@@ -2045,6 +2046,7 @@ int sys_make_changeable(pid_t pid){
 	struct task_struct* curr;
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
+
   //Errors Check:
   if(target == NULL){
     return -ESRCH;
@@ -2052,9 +2054,9 @@ int sys_make_changeable(pid_t pid){
   if(current->policy == SCHED_C || target->policy == SCHED_C){
     return -EINVAL;
   }
-	if(target->prio < 100){
+  if(rt_task(target)){
 		return -1; //We don't change RT processes
-	}
+  }
   //Enqueue:
   pid_t min_pid = get_lowest_task();
 
@@ -2110,8 +2112,9 @@ int sys_change(int val){
 	if(val == 1){
 		//Turn-on only if there are atleast one CHANGABALE in the system:
 		spin_lock_irq(rq);//<<--Needed?
-		if(rq->sc->nr_active < 0){
+		if(rq->sc->nr_active < 1){
 			//printk("[*]CHANGE: There are no SC processes.\r\n");
+			spin_unlock_irq(rq);
 			return 0;
 		}
 		spin_unlock_irq(rq);
