@@ -1,0 +1,126 @@
+#!/bin/bash
+g++ test1.c -o test1
+echo "Running test 1"
+./test1
+rm test1
+sleep 1
+g++ test2.c -o test2
+echo "Running test 2"
+./test2
+sleep 1
+i=1
+prv_line=""
+while read line; do 
+if (($i != 1 )); then
+	if (( $prv_line > $line)); then
+		echo "process do not run in ascending pid order"
+		exit
+	fi
+fi
+i=$i+1
+prv_line=$line
+done < test2.txt
+echo "Test 2 passed"
+rm test2.txt
+rm test2
+sleep 1
+g++ test3.c -o test3
+echo "Running test 3"
+./test3
+sleep 1
+i=1
+prv_line=""
+while read line; do 
+if (($i != 1 )); then
+	if (( $prv_line < $line)); then
+		echo "waiting process do not count in smallest pid count"
+		exit
+	fi
+fi
+i=$i+1
+prv_line=$line
+done < test3.txt
+echo "Test 3 passed"
+rm test3.txt
+rm test3
+g++ test4.c -o test4
+echo "Running test 4"
+./test4
+sleep 1
+i=1
+prv_line=""
+while read line; do 
+if (($i != 1 && $i < 51 )); then
+	if (( $prv_line > $line )); then
+		echo "process do not run in ascending pid order"
+		exit
+	fi
+fi
+if (( $i == 51 )); then
+	if (( $prv_line < $line )); then
+		echo "waiting process do not count in smallest pid count"
+		exit
+	fi
+fi
+if (( $i > 52 && $i < 153)); then
+	if [[ $line != "better"* ]]; then
+		echo "does not run real time/better prio process before SC when needed"
+		exit
+	fi
+fi
+if (( $i > 154 )); then
+	if (( $prv_line > $line )); then
+		echo "process do not run in ascending pid order"
+		exit
+	fi
+fi
+i=$i+1
+prv_line=$line
+done < test4.txt
+echo "Test 4 passed"
+rm test4
+rm test4.txt
+g++ test5.c -o test5
+echo "Running test 5"
+./test5
+sleep 1
+i=1
+prv_line=""
+while read line; do 
+if (($i != 1 && $i < 32)); then
+	if (( $prv_line > $line)); then
+		echo "process do not run in ascending pid order"
+		exit
+	fi
+fi
+if (($i > 31 )); then
+	if [[ $line != "reg"* ]]; then
+		echo "preempting SC process when shouldn't"
+		exit
+	fi
+fi
+i=$i+1
+prv_line=$line
+done < test5.txt
+echo "Test 5 passed"
+rm test5
+rm test5.txt
+g++ test6.c -o test6
+echo "Running test 6"
+./test6
+sleep 1
+i=1
+prv_line=""
+while read line; do 
+if (($i != 1 )); then
+	if (( $prv_line > $line)); then
+		echo "process do not run in ascending pid order when streesed"
+		exit
+	fi
+fi
+i=$i+1
+prv_line=$line
+done < test6.txt
+echo "Test 6 passed"
+rm test6.txt
+rm test6
