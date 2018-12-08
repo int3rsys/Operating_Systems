@@ -813,13 +813,17 @@ void scheduler_tick(int user_tick, int system)
 	int cpu = smp_processor_id();
 	runqueue_t *rq = this_rq();
 	task_t *p = current;
-
+	
 	/* HW2- dont execute if regim is on */
 	if(current->policy == SCHED_C &&
-	   policy_status == HW2_POLICY_ON && 
-	   rq->sc->nr_active > 1) {
+	   policy_status == HW2_POLICY_ON) {
 		   //printk("Tick is disabled for CHANGEABLEs. \r\n");
-		   return;
+		   spin_lock_irq(rq);
+		   if(rq->sc->nr_active > 1){
+			    spin_unlock_irq(rq);
+		   		return;
+		   }
+		   spin_unlock_irq(rq);
 	   }
 	/* -------------------------------- */
 
@@ -2060,7 +2064,8 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
 int sys_make_changeable(pid_t pid){
 	//int sches = 0,sches_running = 0;
 	//struct list_head *process_l;
-	struct task_struct* curr;
+	//struct task_struct* curr;
+	pid_t min_pid=-1;
   struct task_struct* target = find_task_by_pid(pid);
 	runqueue_t *rq = this_rq();
 
@@ -2072,20 +2077,21 @@ int sys_make_changeable(pid_t pid){
     return -EINVAL;
   }
   if(rt_task(target)){
-		return -1; //We don't change RT processes
+		return -EINVAL; //We don't change RT processes
   }
   //Enqueue:
-  pid_t min_pid = get_lowest_task();
-
+  
   target->policy=SCHED_C;
 	spin_lock_irq(rq);
 	enqueue_task_sc(target,rq->sc);
+	spin_unlock_irq(rq);
 
 	//Preempted Check:
-	if(policy_status == HW2_POLICY_ON && target == current){
+	if(policy_status == HW2_POLICY_ON && target->pid == current->pid){
+		    min_pid = get_lowest_task();
 		//printk("[*] target(%d) is also current! Checking if need to preemptd.. \r\n", pid);
 			if(current->pid != min_pid){
-			resched_task(current);
+				resched_task(current);
 			//printk("[*]>> current(%d) resched flag turnd on.\r\n", pid);
 		}
 	}
@@ -2101,7 +2107,7 @@ int sys_make_changeable(pid_t pid){
 		//printk("[***] There are [%d] SC processes in the queue,\r\n", sches);
 		//printk("[***] [%d] of them are running.\r\n", sches_running);
 
-	spin_unlock_irq(rq);
+	//spin_unlock_irq(rq);
 
   //printk("[*] target(%d) is now a SC process.\r\n", pid);
 
@@ -2116,6 +2122,8 @@ int sys_is_changeable(pid_t pid){
   if(target == NULL){
     return -ESRCH;
   }
+  if(target->state == TASK_ZOMBIE) return -EINVAL;
+
   return target->policy==SCHED_C;
 }
 /*
@@ -2124,6 +2132,7 @@ int sys_is_changeable(pid_t pid){
  */
 int sys_change(int val){
 	runqueue_t *rq = this_rq();
+	pid_t min_pid = -1;
 	if (val != 0 && val != 1) return -EINVAL;
 
 	if(val == 1){
@@ -2137,8 +2146,8 @@ int sys_change(int val){
 		spin_unlock_irq(rq);
 		policy_status = HW2_POLICY_ON;
 		//Check if preemted is need:
-		pid_t min_pid = get_lowest_task();
-		if(current->pid != min_pid){
+		min_pid = get_lowest_task();
+		if(current->policy == SCHED_C && current->pid != min_pid){
 			resched_task(current);
 			//printk("[*]>> current(%d) resched flag turnd on.\r\n", current->pid);
 		}
@@ -2155,6 +2164,7 @@ int sys_get_policy(pid_t pid){
   struct task_struct* target = find_task_by_pid(pid);
   if(target == NULL) return -ESRCH;
   if(target->policy != SCHED_C) return -EINVAL;
+  if(target->state == TASK_ZOMBIE) return -EINVAL;
 
   return policy_status;
 }
@@ -2166,7 +2176,7 @@ inline pid_t get_lowest_task(){
 	pid_t lowest_pid=-1;
 	struct list_head *process_l;
 	
-	spin_lock_irq(rq);
+	spin_lock_irq(rq);//<<---Possible DEADLOCK if called from schedule??!
 	//printk("------------- Printing tasks from SC -------------\r\n");
 	list_for_each(process_l, rq->sc->queue) {
 		curr = list_entry(process_l, struct task_struct, run_list_sc);
