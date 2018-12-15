@@ -10,10 +10,14 @@ public:
 
 
 	void up(); // Mark: 1 Thread has left the critical section
-	void down(); // Block untill counter >0, and mark - One thread has entered the critical section.
+	void down(); // Block until counter >0, and mark - One thread has entered the critical section.
 
 private:
-	// TODO 
+	// TODO
+	pthread_mutex_t global_lock;
+	pthread_cond_t not_empty;
+	int cnt;
+
 };
 
 #endif
