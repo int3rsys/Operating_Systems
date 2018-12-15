@@ -26,8 +26,8 @@ void Semaphore::up() {
 void Semaphore::down() {
     pthread_mutex_lock(&global_lock);
     while(cnt==0){
-        pthread_cond_wait(&not_empty,&global_lock);
         cout << pthread_self() << " can't join the party yet. " << endl;
+        pthread_cond_wait(&not_empty,&global_lock);
     }
     cnt--;
     pthread_mutex_unlock(&global_lock);
