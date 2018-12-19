@@ -1,14 +1,14 @@
-//
-// Created by Ilya on 15-Dec-18.
-//
-#include "Semaphore.hpp"
+//#include "Semaphore.hpp"
+#include "PCQueue.hpp"
 #include <ostream>
 #include <time.h>
 
-Semaphore s;
-
+PCQueue<int> p;
+//Semaphore s;
+/*
 void *try_up(void *args) {
     char *msg =(char*)args;
+    //int* pid = (int*)pthread_self().p;
     cout << msg << " is here! My id is: " << pthread_self() << endl;
     s.up();
     return NULL;
@@ -16,13 +16,31 @@ void *try_up(void *args) {
 
 void *try_down(void *args) {
     char *msg =(char*)args;
+    //int* pid = (int*)pthread_self().p;
     cout << msg << " is here! My id is: " << pthread_self() << endl;
     s.down();
+    return NULL;
+}*/
+
+void *push_it(void *args) {
+    //char *msg =(char*)args;
+    //int* pid = (int*)pthread_self().p;
+    //cout << msg << " is here! My id is: " << pthread_self() << endl;
+
+    p.push(*(int*)args);
+    return NULL;
+}
+
+void *pop_it(void *args) {
+    //char *msg =(char*)args;
+    //int* pid = (int*)pthread_self().p;
+    //cout << msg << " is here! My id is: " << pthread_self() << endl;
+    cout << p.pop();// << endl;
     return NULL;
 }
 
 int main() {
-    s=Semaphore();
+/*    s=Semaphore();
     pthread_t t1, t2,t3,t4,t5,t6,t7;
     const char *m1 = "Thread num 1";
     const char *m2 = "Thread num 2";
@@ -45,6 +63,20 @@ int main() {
     pthread_join(t2, NULL);
     pthread_join(t5, NULL);
     pthread_join(t6, NULL);
-    pthread_join(t7, NULL);
+    pthread_join(t7, NULL);*/
+    p = PCQueue<int>();
+    pthread_t t;
+    int i = 0;
+    for( i = 0; i < 10; i++){
+        p.push(i);
+    }
+    sleep(1);
+    for( i = 0; i < 10; i++){
+        pthread_create(&t, NULL, pop_it, (void *) &i);
+    }
+    sleep(1);
+    pthread_join(t, (void**)(&i));
+
+
     return 0;
 }
