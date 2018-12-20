@@ -23,24 +23,18 @@ void *try_down(void *args) {
 }*/
 
 void *push_it(void *args) {
-    //char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    //cout << msg << " is here! My id is: " << pthread_self() << endl;
 
     p.push(*(int*)args);
     return NULL;
 }
 
 void *pop_it(void *args) {
-    //char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    //cout << msg << " is here! My id is: " << pthread_self() << endl;
-    //cout << p.pop();// << endl;
+
     p.pop();
     return NULL;
 }
 
-int main() {
+int main2() {
 /*    s=Semaphore();
     pthread_t t1, t2,t3,t4,t5,t6,t7;
     const char *m1 = "Thread num 1";
@@ -72,7 +66,7 @@ int main() {
        // p.push(i);
     //}
     //sleep(1);
-    for( i = 0; i < 70000; i++){
+    for( i = 0; i < 70; i++){
         pthread_create(&t, NULL, pop_it, (void *) &i);
     }
     //i++;
@@ -80,8 +74,8 @@ int main() {
     pthread_create(&t, NULL, pop_it, (void *) &i);
     //sleep(1);
     int a=0;
-    for( i = 0; i < 70002; i++){
-        cout << pthread_join(t, (void**)(&a));
+    for( i = 0; i < 70; i++){
+        pthread_join(t, (void**)(&a));
 
     }
 

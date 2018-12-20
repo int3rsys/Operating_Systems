@@ -1,4 +1,6 @@
+#include "Headers.hpp"
 #include "Game.hpp"
+
 /*--------------------------------------------------------------------------------
 								
 --------------------------------------------------------------------------------*/
@@ -39,7 +41,7 @@ void Game::_destroy_game(){
 /*--------------------------------------------------------------------------------
 								
 --------------------------------------------------------------------------------*/
-inline static void print_board(const char* header) {
+inline void Game::print_board(const char* header) {
 
 	if(print_on){ 
 
@@ -59,7 +61,10 @@ inline static void print_board(const char* header) {
 	}
 
 }
+void Game::Consumer::thread_workload() {
 
+
+}
 
 /* Function sketch to use for printing the board. You will need to decide its placement and how exactly 
 	to bring in the field's parameters. 

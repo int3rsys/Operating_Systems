@@ -18,6 +18,14 @@ public:
         producers_count = 0;
 
     }
+
+    ~PCQueue(){
+	    pthread_mutex_destroy(&loby_lock);
+        pthread_mutex_destroy(&vip_lock);
+        pthread_cond_destroy(&producer_finished);
+        pthread_cond_destroy(&not_empty);
+    }
+
 	// Blocks while queue is empty. When queue holds items, allows for a single
 	// thread to enter and remove an item from the front of the queue and return it. 
 	// Assumes multiple consumers.
@@ -53,13 +61,16 @@ public:
 
         is_producer_waiting = 1;
 		pthread_mutex_lock(&vip_lock);
+
         q.push(item);
         cout << "PUSHED!" ;
-		pthread_cond_signal(&not_empty);
-		pthread_mutex_unlock(&vip_lock);
         is_producer_waiting = 0;
-        pthread_cond_signal(&producer_finished);
-        pthread_cond_signal(&not_empty);
+		pthread_cond_broadcast(&not_empty);
+
+		pthread_mutex_unlock(&vip_lock);
+
+        pthread_cond_broadcast(&producer_finished);
+        pthread_cond_broadcast(&not_empty);
 	}
 
 
