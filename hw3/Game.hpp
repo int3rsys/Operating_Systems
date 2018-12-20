@@ -3,6 +3,7 @@
 
 #include "Headers.hpp"
 #include "Thread.hpp"
+#include "PCQueue.hpp"
 /*--------------------------------------------------------------------------------
 								  Auxiliary Structures
 --------------------------------------------------------------------------------*/
@@ -16,7 +17,7 @@ struct game_params {
 };
 
 /* Every thread needs to know his job definition */
-struct job {
+struct job_t {
 	int start_row;
 	int finish_row;
 };

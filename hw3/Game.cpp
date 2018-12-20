@@ -29,7 +29,13 @@ void Game::_init_game() {
 void Game::_step(uint curr_gen) {
 	// Push jobs to queue
 	// Wait for the workers to finish calculating 
-	// Swap pointers between current and next field 
+	// Swap pointers between current and next field
+
+	//PCQueue<job_t*> jobs;
+	//  Divide the board to jobs
+	//  split  the jobs to threads
+
+
 }
 
 void Game::_destroy_game(){
