@@ -1,82 +1,72 @@
-//#include "Semaphore.hpp"
-#include "PCQueue.hpp"
-#include <ostream>
-#include <time.h>
+#include "Game.hpp"
 
-PCQueue<int> p;
-//Semaphore s;
-/*
-void *try_up(void *args) {
-    char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    cout << msg << " is here! My id is: " << pthread_self() << endl;
-    s.up();
-    return NULL;
+static inline game_params parse_input_args(int argc, char **argv);
+static inline void usage(const char* mes);
+static void calc_and_append_statistics(uint n_threads, const vector<float>& gen_hist, const vector<float>& tile_hist);
+
+/*--------------------------------------------------------------------------------
+										Main
+--------------------------------------------------------------------------------*/
+int main(int argc, char **argv) {
+
+	game_params params = parse_input_args(argc, argv);
+	Game g(params);
+	g.run();
+	calc_and_append_statistics(g.thread_num(), g.gen_hist(), g.tile_hist());
+	return 0;
+}
+/*--------------------------------------------------------------------------------
+							 Auxiliary Implementation
+--------------------------------------------------------------------------------*/
+static inline game_params parse_input_args(int argc, char **argv) {
+
+	if (argc != 6) // ./gameoflife filename.txt 100 20 Y Y 
+		usage("Wrong number of arguments - expected 5");
+
+	game_params g;
+	g.filename = argv[1];
+	g.n_gen = strtoul(argv[2], NULL, 10);
+	g.n_thread = strtoul(argv[3], NULL, 10);
+
+	string inter = string(argv[4]); 
+	string print = string(argv[5]); 
+	g.interactive_on = (inter == "y" || inter == "Y") ? true : false; 
+	g.print_on = (print == "y" || print == "Y") ? true : false; 
+
+	if (g.n_gen <= 0 || g.n_thread <= 0)
+		usage("Invalid number of generations/number of threads (Required: integer >0)");
+	return g;
 }
 
-void *try_down(void *args) {
-    char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    cout << msg << " is here! My id is: " << pthread_self() << endl;
-    s.down();
-    return NULL;
-}*/
-
-void *push_it(void *args) {
-    //char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    //cout << msg << " is here! My id is: " << pthread_self() << endl;
-
-    p.push(*(int*)args);
-    return NULL;
+static inline void usage(const char* mes) {
+	cerr << "Usage Error : " << mes
+		<< "\nUse format: ./GameOfLife <matrixfile.txt> <number_of_generations> <number_of_threads> <Y/N> <Y/N>\n"
+		<< "Last two are flags for (1) interactive mode , (2) output to screen\n";
+	exit(1);
 }
 
-void *pop_it(void *args) {
-    //char *msg =(char*)args;
-    //int* pid = (int*)pthread_self().p;
-    //cout << msg << " is here! My id is: " << pthread_self() << endl;
-    cout << p.pop();// << endl;
-    return NULL;
-}
 
-int main() {
-/*    s=Semaphore();
-    pthread_t t1, t2,t3,t4,t5,t6,t7;
-    const char *m1 = "Thread num 1";
-    const char *m2 = "Thread num 2";
-    const char *m3 = "Thread num 3";
-    const char *m4 = "Thread num 4";
-    const char *m5 = "Thread num 5";
-    const char *m6 = "Thread num 6";
-    const char *m7 = "Thread num 7";
-    pthread_create(&t2, NULL, try_down, (void *) m1);
-    pthread_create(&t1, NULL, try_down, (void *) m2);
-    pthread_create(&t3, NULL, try_down, (void *) m3);
-    sleep(1);
-    pthread_create(&t4, NULL, try_up, (void *) m4);
-    pthread_create(&t5, NULL, try_up, (void *) m5);
-    pthread_create(&t6, NULL, try_up, (void *) m6);
-    pthread_create(&t7, NULL, try_up, (void *) m7);
-    pthread_join(t1, NULL);
-    pthread_join(t3, NULL);
-    pthread_join(t4, NULL);
-    pthread_join(t2, NULL);
-    pthread_join(t5, NULL);
-    pthread_join(t6, NULL);
-    pthread_join(t7, NULL);*/
-    p = PCQueue<int>();
-    pthread_t t;
-    int i = 0;
-    for( i = 0; i < 10; i++){
-        p.push(i);
-    }
-    sleep(1);
-    for( i = 0; i < 10; i++){
-        pthread_create(&t, NULL, pop_it, (void *) &i);
-    }
-    sleep(1);
-    pthread_join(t, (void**)(&i));
+static void calc_and_append_statistics(uint n_threads, const vector<float>& gen_hist, const vector<float>& tile_hist) {
 
+	float total_time = (float)accumulate(gen_hist.begin(), gen_hist.end(), 0.0);
+	float avg_gen_time = total_time / gen_hist.size();
+	float avg_tile_time = (float)accumulate(tile_hist.begin(), tile_hist.end(), 0.0) / tile_hist.size();
+	float gen_rate = gen_hist.size() / total_time;
+	float tile_rate = tile_hist.size() / total_time;
 
-    return 0;
+	ifstream ifile("results.csv");
+	bool file_exists = ifile.good();
+	ifile.close();
+
+	std::ofstream results_file(DEF_RESULTS_FILE_NAME, std::ofstream::app | std::ofstream::out);
+	if (!file_exists)
+	{
+		results_file << "EffectiveThreadNum,GenNum,Gen_Rate[1/us],Avg_Gen_Time[us],Tile_Rate[1/us],Avg_Tile_Time[us],Total_Time[us]" << endl;
+		// cout << "Successfully created results file: " << DEF_RESULTS_FILE_NAME << endl;
+	}
+
+	results_file << n_threads << "," << gen_hist.size() << "," << gen_rate << "," << avg_gen_time << "," << tile_rate
+		<< "," << avg_tile_time << "," << total_time << endl;  
+
+	results_file.close();
 }

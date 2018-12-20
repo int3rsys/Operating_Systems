@@ -24,12 +24,14 @@ public:
 	T pop(){
 	    //Get in the loby:
         pthread_mutex_lock(&loby_lock);
+
+        //IN THE LOBY::
+        while(is_producer_waiting == 1) {
+            pthread_cond_wait(&producer_finished, &loby_lock);
+        }
+
         while(q.size() == 0) {
             pthread_cond_wait(&not_empty, &loby_lock);
-        }
-        //IN THE LOBY::
-        while(is_producer_waiting) {
-            pthread_cond_wait(&producer_finished, &loby_lock);
         }
 
         pthread_mutex_unlock(&loby_lock);
@@ -52,10 +54,12 @@ public:
         is_producer_waiting = 1;
 		pthread_mutex_lock(&vip_lock);
         q.push(item);
-		pthread_cond_broadcast(&not_empty);
+        cout << "PUSHED!" ;
+		pthread_cond_signal(&not_empty);
 		pthread_mutex_unlock(&vip_lock);
         is_producer_waiting = 0;
         pthread_cond_signal(&producer_finished);
+        pthread_cond_signal(&not_empty);
 	}
 
 

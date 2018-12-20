@@ -3,11 +3,7 @@
 //
 #include "Semaphore.hpp"
 
-Semaphore::Semaphore() {
-    pthread_mutex_init(&global_lock,NULL);
-    pthread_cond_init(&not_empty,NULL);
-    cnt=0;
-}
+
 
 Semaphore::Semaphore(unsigned val) {
     pthread_mutex_init(&global_lock,NULL);
@@ -23,7 +19,7 @@ Semaphore::~Semaphore() {
 void Semaphore::up() {
     pthread_mutex_lock(&global_lock);
     cnt++;
-    cout << "Cnt: " << cnt << endl;
+    //cout << "Cnt: " << cnt << endl;
     pthread_cond_signal(&not_empty);
     pthread_mutex_unlock(&global_lock);
 }
@@ -32,7 +28,7 @@ void Semaphore::down() {
     pthread_mutex_lock(&global_lock);
     //int* pid = (int*)pthread_self().p;
     while(cnt==0){
-        cout << pthread_self() << " can't join the party yet. " << endl;
+        //cout << pthread_self() << " can't join the party yet. " << endl;
         pthread_cond_wait(&not_empty,&global_lock);
     }
     cnt--;
