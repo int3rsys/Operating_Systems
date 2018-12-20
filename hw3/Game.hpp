@@ -67,24 +67,28 @@ protected: // All members here are protected, instead of private for testing pur
     bool_mat curr;
     bool_mat next;
 
+	friend class Worker;
+private:
 	class Worker :  public Thread {
 
 	private:
-		bool_mat* curr;
-		bool_mat* next;
-		job_t job;
-		//Game* game_ptr;
+		//bool_mat* curr;
+		//bool_mat* next;
+		//job_t job;
+		Game* game_ptr;
 
-    public:
-		/* Worker c'tor */
-        Worker(uint thread_id, bool_mat* curr_ptr, bool_mat* next_ptr, job_t job):
-        Thread::Thread(thread_id), curr(curr_ptr), next(next_ptr), job(job){};
-        //~Worker() = default;
+	public:
+		Worker(uint thread_id, Game* game)://, job_t job):
+				Thread::Thread(thread_id), game_ptr(game){};//, job(job){};
+		//Worker(uint thread_id, bool_mat* curr_ptr, bool_mat* next_ptr, job_t job):
+		//		Thread::Thread(thread_id), curr(curr_ptr), next(next_ptr), job(job){};
 
 	protected:
 		void thread_workload() override;
 
 	};
-
+	//vector<Worker*> workers;
+	PCQueue<job_t> jobs_q;
+	int jobs_num;
 };
 #endif

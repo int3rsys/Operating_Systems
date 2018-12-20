@@ -10,6 +10,7 @@ Game::Game(game_params params){
     m_thread_num = params.n_thread;
     interactive_on = params.interactive_on;
     print_on = params.print_on;
+	jobs_num = 0;
 
     vector<string> lines = utils::read_lines(params.filename);
 	vector<string> temp_line;
@@ -59,22 +60,32 @@ void Game::_init_game() {
 	// Start the threads
 	// Testing of your implementation will presume all threads are started here
 
-	 m_threadpool = vector<Thread*>(1);
-	 Worker* worker = new Worker(1,&curr,&next,
-	 		{1,total_rows_num + 1,1,total_cols_num + 1}
-	 		);
-     worker->start();
-     m_threadpool.push_back(worker);
+	 m_threadpool = vector<Thread*>(m_thread_num);
+	 m_threadpool[0] = new Worker(1,this);
+	 m_threadpool[0]->start();
+
+	 /*for(uint i = 0; i < m_thread_num; i++){
+		 worker = new Worker(1,&curr,&next,
+		 		{1,total_rows_num + 1,1,total_cols_num + 1}
+		 		);
+	 }*/
+
 
 
 
 }
 
 void Game::_step(uint curr_gen) {
-	// Push jobs to queue
-	// Wait for the workers to finish calculating 
-	// Swap pointers between current and next field
 
+	// Push jobs to queue:
+	//N jobs would be created by the producer and inserted to the queue
+	jobs_num = 1;//=N
+	job_t job = {1,total_rows_num + 1,1,total_cols_num + 1};
+	jobs_q.push(job);
+
+	// Wait for the workers to finish calculating
+	while(!jobs_q.is_empty() && jobs_num > 0){}
+	// Swap pointers between current and next field
 	vector<vector<bool>> temp = vector<vector<bool>>(curr);
     curr = next;
     next = temp;
@@ -101,6 +112,7 @@ inline void Game::print_board(const char* header) {
 		// Print small header if needed
 		if (header != NULL){
 			cout << "<------------" << header << "------------>" << endl;
+			//Print init board
             for(uint i = 1 ; i < total_rows_num + 1; i++) {
                 cout << "|" ;
                 for (uint j = 1; j < total_cols_num + 1; j++) {
@@ -126,41 +138,60 @@ inline void Game::print_board(const char* header) {
 		// Display for GEN_SLEEP_USEC micro-seconds on screen 
 		if(interactive_on)
 			usleep(GEN_SLEEP_USEC);
+
+		/*	cout << u8"╔" << string(u8"═") * total_cols_num << u8"╗" << endl;
+			for (uint i = 1; i < total_rows_num + 1; ++i) {
+				cout << u8"║";
+				for (uint j = 1; j < total_cols_num + 1; ++j) {
+					cout << (curr[i][j] ? u8"█" : u8"░");
+				}
+				cout << u8"║" << endl;
+			}
+			cout << u8"╚" << string(u8"═") * total_cols_num << u8"╝" << endl;*/
 	}
 
 }
 
-
+/*
+ * Thread's Workload Function
+ * */
 void Game::Worker::thread_workload(){
-	//while(true) {
+	while(true) {
+		//Start polling the queue:
+		job_t job = this->game_ptr->jobs_q.pop();
+		//Job acquired. now start working you lazy worker!
+
+		//=============:WORK:============//
 		int alives = 0;
 		//Loop over the given cells:
 		for (uint row = job.start_row; row < job.finish_row; row++) {
 			for (uint col = job.start_col; col < job.finish_col; col++) {
-				//Check neighbors:
+				//Check for alive neighbors:
 				for (int i = -1; i < 2; i++) {
 					for (int j = -1; j < 2; j++) {
-						if((*(this->curr))[row + i][col + j])
+						if(this->game_ptr->curr[row + i][col + j])
 							alives++ ;
 					}
 				}
-				if((*(this->curr))[row][col]) alives--;
+				if(this->game_ptr->curr[row][col]) alives--;
 
 				//===========Rules:==========//
-				(*(this->next))[row][col] = false; //KILL
+				this->game_ptr->next[row][col] = false; //KILL
 
-				if ((*(this->curr))[row][col]) {
+				if (this->game_ptr->curr[row][col]) {
 					if (alives == 3 || alives == 2)
-						(*(this->next))[row][col] = true; //SURVIVE
+						this->game_ptr->next[row][col] = true; //SURVIVE
 				} else {
 					if (alives == 3)
-						(*(this->next))[row][col] = true; //BIRTH
+						this->game_ptr->next[row][col] = true; //BIRTH
 				}
 				//===========::::::===========//
 				alives = 0;
 			}
-
-		//}
+		}
+		//==========:WORK's DONE:=========//
+		//Now to the next job!
+		this->game_ptr->jobs_num--;
 	}
 }
 
