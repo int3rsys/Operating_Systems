@@ -4,6 +4,7 @@
 #include "Headers.hpp"
 #include "Thread.hpp"
 #include "PCQueue.hpp"
+#include "utils.hpp"
 /*--------------------------------------------------------------------------------
 								  Auxiliary Structures
 --------------------------------------------------------------------------------*/
@@ -20,7 +21,10 @@ struct game_params {
 struct job_t {
 	int start_row;
 	int finish_row;
+    int start_col;
+	int finish_col;
 };
+
 
 /*--------------------------------------------------------------------------------
 									Class Declaration
@@ -29,7 +33,7 @@ class Game {
 public:
 
 	Game(game_params);
-	~Game();
+	~Game() = default;
 	void run(); // Runs the game
 	const vector<float> gen_hist() const; // Returns the generation timing histogram  
 	const vector<float> tile_hist() const; // Returns the tile timing histogram
@@ -44,6 +48,7 @@ protected: // All members here are protected, instead of private for testing pur
 	void _destroy_game();
     inline void print_board(const char* header);
 
+
 	uint m_gen_num; 			 // The number of generations to run
 	uint m_thread_num; 			 // Effective number of threads = min(thread_num, field_height)
 	vector<float> m_tile_hist; 	 // Shared Timing history for tiles: First m_gen_num cells are the calculation durations for tiles in generation 1 and so on. 
@@ -55,8 +60,26 @@ protected: // All members here are protected, instead of private for testing pur
 	bool print_on; // Allows the printing of the board. Turn this off when you are checking performance (Dry 3, last question)
 	
 	// TODO: Add in your variables and synchronization primitives
+
+	int total_rows_num;
+	int total_cols_num;
+
+	vector<vector<bool>> curr;
+    vector<vector<bool>> next;
+
+
+
 	class Consumer :  public Thread {
+
+    public:
+	    Consumer(uint thread_id,Game* game,job_t job):Thread::Thread(thread_id),game_ptr(game),job(job){};
+
+	protected:
 		void thread_workload() override;
+
+	private:
+	    job_t job;
+	    Game* game_ptr;
 	};
 
 };

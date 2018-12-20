@@ -15,8 +15,8 @@ public:
 	bool start()
 	{
 		bool res=false;
-		res = pthread_create(&m_thread,NULL,entry_func,NULL);
-		return res;
+		res = pthread_create(&m_thread, nullptr,entry_func,(void*)this);
+		return !res;
 	}
 
 	/** Will not return until the internal thread has exited. */
@@ -37,7 +37,10 @@ protected:
 	uint m_thread_id; // A number from 0 -> Number of threads initialized, providing a simple numbering for you to use
 
 private:
-	static void * entry_func(void * thread) { ((Thread *)thread)->thread_workload(); return NULL; }
+	static void * entry_func(void * thread) {
+		((Thread *)thread)->thread_workload();
+		return NULL;
+	}
 	pthread_t m_thread;
 };
 

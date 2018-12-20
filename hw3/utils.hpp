@@ -2,6 +2,7 @@
 #define __UTILS_H
 #include "Headers.hpp"
 
+
 namespace utils {
 	// Read all non-empty lines from file as strings with no carriage returns, and returns them in a std::vector 
 	vector<string> read_lines(const string& filename); 
