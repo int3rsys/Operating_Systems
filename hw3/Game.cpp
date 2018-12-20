@@ -1,6 +1,6 @@
 #include "Headers.hpp"
 #include "Game.hpp"
-
+#include <bitset>
 
 /*--------------------------------------------------------------------------------
 								
@@ -73,9 +73,9 @@ void Game::_step(uint curr_gen) {
 	// Wait for the workers to finish calculating 
 	// Swap pointers between current and next field
 
-	//vector<vector<bool>> temp = vector<vector<bool>>(curr);
+	vector<vector<bool>> temp = vector<vector<bool>>(curr);
     curr = next;
-    //next = temp;
+    next = temp;
 
 }
 
@@ -144,36 +144,36 @@ uint Game::thread_num() const {
 
 
 void Game::Consumer::thread_workload(){
-	int alives = 0;
-	//Loop over the given cells:
-	for(int row = job.start_row; row < job.finish_row; row++){
-		for(int col = job.start_col; col < job.finish_col ; col++) {
-			//Check neibores:
-			for (int i = - 1; i < 2; i++) {
-				for (int j = -1; j < 2; j++) {
-					alives += game_ptr->curr[row + i][col + j];
+	while(1) {
+		int alives = 0;
+		//Loop over the given cells:
+		for (int row = job.start_row; row < job.finish_row; row++) {
+			for (int col = job.start_col; col < job.finish_col; col++) {
+				//Check neibores:
+				for (int i = -1; i < 2; i++) {
+					for (int j = -1; j < 2; j++) {
+						alives += game_ptr->curr[row + i][col + j];
+					}
 				}
+				alives -= game_ptr->curr[row][col];
+				//===========Rules:==========//
+				if (game_ptr->curr[row][col] == 0) {
+					if (alives == 3)
+						game_ptr->next[row][col] == 1; //BIRTH
+					else
+						game_ptr->next[row][col] == 0;
+				} else {
+					if (alives == 3 || alives == 2)
+						game_ptr->next[row][col] == 1; //SURVIVE
+					else
+						game_ptr->next[row][col] == 0;
+				}
+				//===========::::::===========//
+				alives = 0;
 			}
-			alives-=game_ptr->curr[row][col];
-			//===========Rules:==========//
-			if(game_ptr->curr[row][col] == 0){
-			    if(alives == 3)
-			        game_ptr->next[row][col] == 1; //BIRTH
-			    else
-			        game_ptr->next[row][col] == 0;
-			}
-			else{
-                if(alives == 3 || alives == 2)
-                    game_ptr->next[row][col] == 1; //SURVIVE
-                else
-                    game_ptr->next[row][col] == 0;
-			}
-            //===========::::::===========//
-			alives = 0;
+
 		}
-
 	}
-
 }
 
 /* Function sketch to use for printing the board. You will need to decide its placement and how exactly 
