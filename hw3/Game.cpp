@@ -18,21 +18,21 @@ Game::Game(game_params params){
 	total_cols_num = temp_line.size();
 
 	//Initializing the vectors with '0':
-	curr = vector<vector<bool>>(total_rows_num+2);
-	next = vector<vector<bool>>(total_rows_num+2);
-	for(int i = 0 ; i < total_rows_num+2; i++) {
-		for (int j = 0; j < total_cols_num+2; j++) {
+	curr = bool_mat(total_rows_num + 2);
+	next = bool_mat(total_rows_num + 2);
+	for(uint i = 0 ; i < total_rows_num + 2; i++) {
+		for (uint j = 0; j < total_cols_num + 2; j++) {
 			curr[i].push_back(false);
 			next[i].push_back(false);
 		}
 	}
 
 	//Parse the board input:
-	for(int i = 1 ; i < total_rows_num + 1 ; i++){
+	for(uint i = 1 ; i < total_rows_num + 1 ; i++){
 		temp_line = utils::split(lines[i-1],' ');
-		for(int j = 1; j < total_cols_num + 1 ; j++){
-            curr[i][j] = (temp_line[j-1] == "1") ? 1 : 0 ;
-			next[i][j] = (temp_line[j-1] == "1") ? 1 : 0 ;
+		for(uint j = 1; j < total_cols_num + 1 ; j++){
+            curr[i][j] = (temp_line[j-1] == "1") ;
+            next[i][j] = (temp_line[j-1] == "1") ;
 		}
 	}
 
@@ -60,10 +60,12 @@ void Game::_init_game() {
 	// Testing of your implementation will presume all threads are started here
 
 	 m_threadpool = vector<Thread*>(1);
-     Consumer* worker = new Consumer(1,this,{1,total_rows_num + 1,1,total_cols_num + 1});
+	 Worker* worker = new Worker(1,&curr,&next,
+	 		{1,total_rows_num + 1,1,total_cols_num + 1}
+	 		);
      worker->start();
      m_threadpool.push_back(worker);
-		//
+
 
 
 }
@@ -99,9 +101,9 @@ inline void Game::print_board(const char* header) {
 		// Print small header if needed
 		if (header != NULL){
 			cout << "<------------" << header << "------------>" << endl;
-            for(int i = 0 ; i < total_rows_num+2; i++) {
+            for(uint i = 1 ; i < total_rows_num + 1; i++) {
                 cout << "|" ;
-                for (int j = 0; j < total_cols_num+2; j++) {
+                for (uint j = 1; j < total_cols_num + 1; j++) {
                     cout << curr[i][j];
                 }
                 cout << "|" << endl;
@@ -111,9 +113,9 @@ inline void Game::print_board(const char* header) {
 		
 		// TODO: Print the board
 		if(header == NULL){
-            for(int i = 0 ; i < total_rows_num+2; i++) {
+            for(uint i = 1 ; i < total_rows_num + 1; i++) {
                 cout << "|" ;
-                for (int j = 0; j < total_cols_num+2; j++) {
+                for (uint j = 1; j < total_cols_num + 1; j++) {
                     cout << curr[i][j];
                 }
                 cout << "|" << endl;
@@ -129,52 +131,39 @@ inline void Game::print_board(const char* header) {
 }
 
 
-const vector<float> Game::gen_hist() const {
-	return m_gen_hist;
-}
-
-const vector<float> Game::tile_hist() const {
-	return m_tile_hist;
-}
-
-uint Game::thread_num() const {
-	return m_thread_num;
-}
-
-
-
-void Game::Consumer::thread_workload(){
-	while(1) {
+void Game::Worker::thread_workload(){
+	//while(true) {
 		int alives = 0;
 		//Loop over the given cells:
-		for (int row = job.start_row; row < job.finish_row; row++) {
-			for (int col = job.start_col; col < job.finish_col; col++) {
-				//Check neibores:
+		for (uint row = job.start_row; row < job.finish_row; row++) {
+			for (uint col = job.start_col; col < job.finish_col; col++) {
+				//Check neighbors:
 				for (int i = -1; i < 2; i++) {
 					for (int j = -1; j < 2; j++) {
-						alives += game_ptr->curr[row + i][col + j];
+						if((*(this->curr))[row + i][col + j])
+							alives++ ;
 					}
 				}
-				alives -= game_ptr->curr[row][col];
+				if((*(this->curr))[row][col]) alives--;
+
 				//===========Rules:==========//
-				if (game_ptr->curr[row][col] == 0) {
-					if (alives == 3)
-						game_ptr->next[row][col] == 1; //BIRTH
-					else
-						game_ptr->next[row][col] == 0;
-				} else {
+				(*(this->next))[row][col] = false; //KILL
+
+				if ((*(this->curr))[row][col]) {
 					if (alives == 3 || alives == 2)
-						game_ptr->next[row][col] == 1; //SURVIVE
-					else
-						game_ptr->next[row][col] == 0;
+						(*(this->next))[row][col] = true; //SURVIVE
+				} else {
+					if (alives == 3)
+						(*(this->next))[row][col] = true; //BIRTH
 				}
 				//===========::::::===========//
 				alives = 0;
 			}
 
-		}
+		//}
 	}
 }
+
 
 /* Function sketch to use for printing the board. You will need to decide its placement and how exactly 
 	to bring in the field's parameters. 
@@ -188,7 +177,18 @@ void Game::Consumer::thread_workload(){
 			cout << u8"║" << endl;
 		}
 		cout << u8"╚" << string(u8"═") * field_width << u8"╝" << endl;
-*/ 
+*/
 
+/* Getters */
+const vector<float> Game::gen_hist() const {
+	return m_gen_hist;
+}
 
+const vector<float> Game::tile_hist() const {
+	return m_tile_hist;
+}
+
+uint Game::thread_num() const {
+	return m_thread_num;
+}
 

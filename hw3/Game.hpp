@@ -19,10 +19,10 @@ struct game_params {
 
 /* Every thread needs to know his job definition */
 struct job_t {
-	int start_row;
-	int finish_row;
-    int start_col;
-	int finish_col;
+	uint start_row;
+	uint finish_row;
+	uint start_col;
+	uint finish_col;
 };
 
 
@@ -61,25 +61,29 @@ protected: // All members here are protected, instead of private for testing pur
 	
 	// TODO: Add in your variables and synchronization primitives
 
-	int total_rows_num;
-	int total_cols_num;
+    uint total_rows_num;
+    uint total_cols_num;
 
-	vector<vector<bool>> curr;
-    vector<vector<bool>> next;
+    bool_mat curr;
+    bool_mat next;
 
+	class Worker :  public Thread {
 
-
-	class Consumer :  public Thread {
+	private:
+		bool_mat* curr;
+		bool_mat* next;
+		job_t job;
+		//Game* game_ptr;
 
     public:
-	    Consumer(uint thread_id,Game* game,job_t job):Thread::Thread(thread_id),game_ptr(game),job(job){};
+		/* Worker c'tor */
+        Worker(uint thread_id, bool_mat* curr_ptr, bool_mat* next_ptr, job_t job):
+        Thread::Thread(thread_id), curr(curr_ptr), next(next_ptr), job(job){};
+        //~Worker() = default;
 
 	protected:
 		void thread_workload() override;
 
-	private:
-	    job_t job;
-	    Game* game_ptr;
 	};
 
 };

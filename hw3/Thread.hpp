@@ -4,7 +4,7 @@
 class Thread
 {
 public:
-	Thread(uint thread_id) 
+	Thread(uint thread_id)
 	{
 		// Only places thread_id
 		m_thread_id = thread_id;
@@ -14,9 +14,9 @@ public:
 	/** Returns true if the thread was successfully started, false if there was an error starting the thread */
 	bool start()
 	{
-		bool res=false;
+		int res;
 		res = pthread_create(&m_thread, nullptr,entry_func,(void*)this);
-		return !res;
+		return (!res);
 	}
 
 	/** Will not return until the internal thread has exited. */
