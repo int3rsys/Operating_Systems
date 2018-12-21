@@ -64,8 +64,8 @@ protected: // All members here are protected, instead of private for testing pur
     uint total_rows_num;
     uint total_cols_num;
 
-    bool_mat curr;
-    bool_mat next;
+    bool_mat *curr;
+    bool_mat *next;
 
 	friend class Worker;
 private:
