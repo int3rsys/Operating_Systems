@@ -81,7 +81,7 @@ void Game::_step(uint curr_gen) {
 	uint range = total_rows_num / jobs_num;
 	uint reminder = total_rows_num % jobs_num;
 
-	for(uint i = 0; i < jobs_num - 1; i++){
+	for(int i = 0; i < jobs_num - 1; i++){
 		job = new job_t{1+(range * i),range*(i + 1),1,total_cols_num + 1};
 		jobs_q.push(*job);
 	}
@@ -90,7 +90,8 @@ void Game::_step(uint curr_gen) {
 	jobs_q.push(*job);
 
 	// Wait for the workers to finish calculating
-	while(!jobs_q.is_empty() && jobs_num > 0){}
+	//while(!jobs_q.is_empty() && jobs_num > 0){}
+	while(!jobs_q.is_empty()){}
 	// Swap pointers between current and next field
 	//vector<vector<bool>> temp = vector<vector<bool>>(curr);
     bool_mat* temp = curr;
