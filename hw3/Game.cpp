@@ -79,20 +79,22 @@ void Game::_step(uint curr_gen) {
 	jobs_num = m_thread_num ;
 	uint range = total_rows_num / m_thread_num;
 	uint remainder = total_rows_num % m_thread_num;
-    //uint prev_start_line = 1;
-	for(uint i = 0; i < m_thread_num - 1; i++){
-		job = new job_t{1+(range * i), range*(i + 1) ,  1,total_cols_num + 1}; //TODO: clean
-		//job = new job_t{prev_start_line, prev_start_line + range , 1, total_cols_num + 1}; //TODO: clean
-        jobs_q.push(job);
-        //prev_start_line += range;
+
+	for(uint i = 1; i < m_thread_num ; i++){
+		job = new job_t{1 + range * (i - 1),
+                        1 + range * (i) ,
+                        1 , total_cols_num + 1}; //TODO: clean
+		jobs_q.push(job);
 	}
 	//Last one gets the remainder:
-	job = new job_t{1 + range*(m_thread_num - 1), (range*m_thread_num) + remainder ,1,total_cols_num + 1};
+	job = new job_t{1 + range * (m_thread_num - 1),
+                    1 + range * (m_thread_num) + remainder ,
+                    1 , total_cols_num + 1};
 	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
 	//while(!jobs_q.is_empty() && jobs_num > 0){}
-	while(!jobs_q.is_empty()){}
+	while(!jobs_q.is_empty()){} //TODO: Need to change this cond, not thread safe!
 	// Swap pointers between current and next field
 	//vector<vector<bool>> temp = vector<vector<bool>>(curr);
     bool_mat* temp = curr;
@@ -172,7 +174,7 @@ inline void Game::print_board(const char* header) {
  * */
 void Game::Worker::thread_workload(){
 	while(true) {
-		if(!this->game_ptr->jobs_q.is_empty()) {
+		//if(!this->game_ptr->jobs_q.is_empty()) {
 			//Start polling the queue:
 			job_t *job = this->game_ptr->jobs_q.pop();
 			//Check for poison:
@@ -186,7 +188,7 @@ void Game::Worker::thread_workload(){
 			//=============:WORK:============//
 			int alives = 0;
 			//Loop over the given cells:
-			for (uint row = job->start_row; row <= job->finish_row; row++) {
+			for (uint row = job->start_row; row < job->finish_row; row++) {
 				for (uint col = job->start_col; col < job->finish_col; col++) {
 					//Check for alive neighbors:
 					for (int i = -1; i < 2; i++) {
@@ -219,7 +221,7 @@ void Game::Worker::thread_workload(){
 			//Now to the next job!
 			this->game_ptr->jobs_num--;
 			delete job;
-		}
+		//}
 	}
 }
 
