@@ -77,15 +77,17 @@ void Game::_step(uint curr_gen) {
 	//N = (total_rows_num / thread_num )
 	job_t* job;
 	jobs_num = m_thread_num ;
-	uint range = total_rows_num / jobs_num;
-	uint remainder = total_rows_num % jobs_num;
-
-	for(int i = 0; i < jobs_num - 1; i++){
-		job = new job_t{1+(range * i),range*(i + 1),1,total_cols_num + 1}; //TODO: clean
-		jobs_q.push(job);
+	uint range = total_rows_num / m_thread_num;
+	uint remainder = total_rows_num % m_thread_num;
+    //uint prev_start_line = 1;
+	for(uint i = 0; i < m_thread_num - 1; i++){
+		job = new job_t{1+(range * i), range*(i + 1) ,  1,total_cols_num + 1}; //TODO: clean
+		//job = new job_t{prev_start_line, prev_start_line + range , 1, total_cols_num + 1}; //TODO: clean
+        jobs_q.push(job);
+        //prev_start_line += range;
 	}
 	//Last one gets the remainder:
-	job = new job_t{1 + range*(jobs_num - 1),1 + (range*jobs_num) + remainder ,1,total_cols_num + 1};
+	job = new job_t{1 + range*(m_thread_num - 1), (range*m_thread_num) + remainder ,1,total_cols_num + 1};
 	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
@@ -103,7 +105,18 @@ void Game::_destroy_game(){
 	// Destroys board and frees all threads and resources 
 	// Not implemented in the Game's destructor for testing purposes. 
 	// Testing of your implementation will presume all threads are joined here
-	for(uint i = 0; i < m_threadpool.size(); i++){
+
+	//Inject poison to kill the threads:
+    job_t* poison_pill;
+	for(uint i = 0; i < m_thread_num; i++){
+        poison_pill = new job_t{0,0,0,0};
+        jobs_q.push(poison_pill);
+    }
+    //Wait for them to die
+    while(!jobs_q.is_empty()){}
+
+    //Free the memory
+	for(uint i = 0; i < m_thread_num; i++){
 		delete m_threadpool[i];
 	}
 	delete curr;
@@ -162,13 +175,18 @@ void Game::Worker::thread_workload(){
 		if(!this->game_ptr->jobs_q.is_empty()) {
 			//Start polling the queue:
 			job_t *job = this->game_ptr->jobs_q.pop();
+			//Check for poison:
+			if(job->start_col+job->finish_col+job->start_row+job->finish_row == 0) {
+                delete job;
+			    break;//eat the poison and die
+			}
 			auto tile_start = std::chrono::system_clock::now();
 			//Job acquired. now start working you lazy worker! (ilya's side note: LOL)
 
 			//=============:WORK:============//
 			int alives = 0;
 			//Loop over the given cells:
-			for (uint row = job->start_row; row < job->finish_row; row++) {
+			for (uint row = job->start_row; row <= job->finish_row; row++) {
 				for (uint col = job->start_col; col < job->finish_col; col++) {
 					//Check for alive neighbors:
 					for (int i = -1; i < 2; i++) {
