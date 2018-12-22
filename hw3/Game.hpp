@@ -33,7 +33,7 @@ class Game {
 public:
 
 	Game(game_params);
-	~Game() = default;
+	~Game() = default; //TODO: join all threads. Insert a sign to the queue that lets the threads know they should stop
 	void run(); // Runs the game
 	const vector<float> gen_hist() const; // Returns the generation timing histogram  
 	const vector<float> tile_hist() const; // Returns the tile timing histogram
@@ -51,7 +51,7 @@ protected: // All members here are protected, instead of private for testing pur
 
 	uint m_gen_num; 			 // The number of generations to run
 	uint m_thread_num; 			 // Effective number of threads = min(thread_num, field_height)
-	vector<float> m_tile_hist; 	 // Shared Timing history for tiles: First m_gen_num cells are the calculation durations for tiles in generation 1 and so on. 
+	vector<float> m_tile_hist; 	 /// Shared Timing history for tiles: First m_thread_num cells are the calculation durations for tiles in generation 1 and so on.
 							   	 // Note: In your implementation, all m_thread_num threads must write to this structure. 
 	vector<float> m_gen_hist;  	 // Timing history for generations: x=m_gen_hist[t] iff generation t was calculated in x microseconds
 	vector<Thread*> m_threadpool; // A storage container for your threads. This acts as the threadpool.
@@ -76,10 +76,10 @@ private:
 		//bool_mat* next;
 		//job_t job;
 		Game* game_ptr;
-
+        vector<float>* m_tile_hist;
 	public:
-		Worker(uint thread_id, Game* game)://, job_t job):
-				Thread::Thread(thread_id), game_ptr(game){};//, job(job){};
+		Worker(uint thread_id, Game* game, vector<float>* m_tile_hist_ptr)://, job_t job):
+				Thread::Thread(thread_id), game_ptr(game), m_tile_hist(m_tile_hist_ptr){};//, job(job){};
 		//Worker(uint thread_id, bool_mat* curr_ptr, bool_mat* next_ptr, job_t job):
 		//		Thread::Thread(thread_id), curr(curr_ptr), next(next_ptr), job(job){};
 
@@ -88,7 +88,7 @@ private:
 
 	};
 	//vector<Worker*> workers;
-	PCQueue<job_t> jobs_q;
+	PCQueue<job_t*> jobs_q;
 	int jobs_num;
 };
 #endif

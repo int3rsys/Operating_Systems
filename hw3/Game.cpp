@@ -1,6 +1,5 @@
 #include "Headers.hpp"
 #include "Game.hpp"
-#include <bitset>
 
 /*--------------------------------------------------------------------------------
 								
@@ -65,7 +64,7 @@ void Game::_init_game() {
 	//Creating & Starting the threads:
 	m_threadpool = vector<Thread*>(m_thread_num);
 	for(uint i = 0; i < m_thread_num; i++){
-		m_threadpool[i] = new Worker(i,this);
+		m_threadpool[i] = new Worker(i,this, &m_tile_hist);
 		m_threadpool[i]->start();
 	}
 
@@ -79,15 +78,15 @@ void Game::_step(uint curr_gen) {
 	job_t* job;
 	jobs_num = m_thread_num ;
 	uint range = total_rows_num / jobs_num;
-	uint reminder = total_rows_num % jobs_num;
+	uint remainder = total_rows_num % jobs_num;
 
 	for(int i = 0; i < jobs_num - 1; i++){
-		job = new job_t{1+(range * i),range*(i + 1),1,total_cols_num + 1};
-		jobs_q.push(*job);
+		job = new job_t{1+(range * i),range*(i + 1),1,total_cols_num + 1}; //TODO: clean
+		jobs_q.push(job);
 	}
-	//Last one gets the reminder:
-	job = new job_t{1 + range*(jobs_num - 1),1 + (range*jobs_num) + reminder ,1,total_cols_num + 1};
-	jobs_q.push(*job);
+	//Last one gets the remainder:
+	job = new job_t{1 + range*(jobs_num - 1),1 + (range*jobs_num) + remainder ,1,total_cols_num + 1};
+	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
 	//while(!jobs_q.is_empty() && jobs_num > 0){}
@@ -104,6 +103,11 @@ void Game::_destroy_game(){
 	// Destroys board and frees all threads and resources 
 	// Not implemented in the Game's destructor for testing purposes. 
 	// Testing of your implementation will presume all threads are joined here
+	for(uint i = 0; i < m_threadpool.size(); i++){
+		delete m_threadpool[i];
+	}
+	delete curr;
+	delete next;
 }
 
 /*--------------------------------------------------------------------------------
@@ -111,8 +115,7 @@ void Game::_destroy_game(){
 --------------------------------------------------------------------------------*/
 inline void Game::print_board(const char* header) {
 
-	if(print_on){ 
-
+	if(print_on){
 		// Clear the screen, to create a running animation 
 		if(interactive_on)
 			system("clear");
@@ -156,41 +159,49 @@ inline void Game::print_board(const char* header) {
  * */
 void Game::Worker::thread_workload(){
 	while(true) {
-		//Start polling the queue:
-		job_t job = this->game_ptr->jobs_q.pop();
-		//Job acquired. now start working you lazy worker!
+		if(!this->game_ptr->jobs_q.is_empty()) {
+			//Start polling the queue:
+			job_t *job = this->game_ptr->jobs_q.pop();
+			auto tile_start = std::chrono::system_clock::now();
+			//Job acquired. now start working you lazy worker! (ilya's side note: LOL)
 
-		//=============:WORK:============//
-		int alives = 0;
-		//Loop over the given cells:
-		for (uint row = job.start_row; row < job.finish_row; row++) {
-			for (uint col = job.start_col; col < job.finish_col; col++) {
-				//Check for alive neighbors:
-				for (int i = -1; i < 2; i++) {
-					for (int j = -1; j < 2; j++) {
-						if((*this->game_ptr->curr)[row + i][col + j])
-							alives++ ;
+			//=============:WORK:============//
+			int alives = 0;
+			//Loop over the given cells:
+			for (uint row = job->start_row; row < job->finish_row; row++) {
+				for (uint col = job->start_col; col < job->finish_col; col++) {
+					//Check for alive neighbors:
+					for (int i = -1; i < 2; i++) {
+						for (int j = -1; j < 2; j++) {
+							if ((*this->game_ptr->curr)[row + i][col + j])
+								alives++;
+						}
 					}
-				}
-				if((*this->game_ptr->curr)[row][col]) alives--;
+					if ((*this->game_ptr->curr)[row][col]) alives--;
 
-				//===========Rules:==========//
-				(*this->game_ptr->next)[row][col] = false; //KILL
+					//===========Rules:==========//
+					(*this->game_ptr->next)[row][col] = false; //KILL
 
-				if ((*this->game_ptr->curr)[row][col]) {
-					if (alives == 3 || alives == 2)
-						(*this->game_ptr->next)[row][col] = true; //SURVIVE
-				} else {
-					if (alives == 3)
-						(*this->game_ptr->next)[row][col] = true; //BIRTH
+					if ((*this->game_ptr->curr)[row][col]) {
+						if (alives == 3 || alives == 2)
+							(*this->game_ptr->next)[row][col] = true; //SURVIVE
+					} else {
+						if (alives == 3)
+							(*this->game_ptr->next)[row][col] = true; //BIRTH
+					}
+					//===========::::::===========//
+					alives = 0;
 				}
-				//===========::::::===========//
-				alives = 0;
 			}
+			//==========:WORK's DONE:=========//
+			auto tile_done = std::chrono::system_clock::now();
+			m_tile_hist->push_back(
+					(float) std::chrono::duration_cast<std::chrono::microseconds>(
+							tile_start - tile_done).count());
+			//Now to the next job!
+			this->game_ptr->jobs_num--;
+			delete job;
 		}
-		//==========:WORK's DONE:=========//
-		//Now to the next job!
-		this->game_ptr->jobs_num--;
 	}
 }
 
