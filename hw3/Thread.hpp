@@ -9,7 +9,7 @@ public:
 		// Only places thread_id
 		m_thread_id = thread_id;
 	} 
-	virtual ~Thread() {} // Does nothing 
+	virtual ~Thread() = default; // Does nothing
 
 	/** Returns true if the thread was successfully started, false if there was an error starting the thread */
 	bool start()
@@ -22,8 +22,7 @@ public:
 	/** Will not return until the internal thread has exited. */
 	void join()
 	{
-		int result=0;
-		pthread_join(m_thread,(void **)&result);
+		pthread_join(m_thread,NULL);
 	}
 
 	/** Returns the thread_id **/

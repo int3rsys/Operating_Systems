@@ -10,6 +10,7 @@ Game::Game(game_params params){
     interactive_on = params.interactive_on;
     print_on = params.print_on;
 	jobs_num = 0;
+    pthread_mutex_init(&jobs_lock,NULL);
 
     vector<string> lines = utils::read_lines(params.filename);
 	vector<string> temp_line;
@@ -28,7 +29,6 @@ Game::Game(game_params params){
 			(*next)[i].push_back(false);
 		}
 	}
-
 	//Parse the board input:
 	for(uint i = 1 ; i < total_rows_num + 1 ; i++){
 		temp_line = utils::split(lines[i-1],' ');
@@ -56,17 +56,17 @@ void Game::run() {
 }
 
 void Game::_init_game() {
-	// Create threads
 	// Create game fields
-	// Start the threads
 	// Testing of your implementation will presume all threads are started here
 
-	//Creating & Starting the threads:
-	m_threadpool = vector<Thread*>(m_thread_num);
+    // Create threads:
 	for(uint i = 0; i < m_thread_num; i++){
-		m_threadpool[i] = new Worker(i,this, &m_tile_hist);
-		m_threadpool[i]->start();
+		m_threadpool.push_back(new Worker(i,this));
 	}
+    // Start the threads:
+    for(uint i = 0; i < m_thread_num; i++){
+        m_threadpool[i]->start();
+    }
 
 }
 
@@ -74,7 +74,7 @@ void Game::_step(uint curr_gen) {
 
 	// Push jobs to queue:
 	//N jobs would be created by the producer and inserted to the queue
-	//N = (total_rows_num / thread_num )
+
 	job_t* job;
 	jobs_num = m_thread_num ;
 	uint range = total_rows_num / m_thread_num;
@@ -83,7 +83,7 @@ void Game::_step(uint curr_gen) {
 	for(uint i = 1; i < m_thread_num ; i++){
 		job = new job_t{1 + range * (i - 1),
                         1 + range * (i) ,
-                        1 , total_cols_num + 1}; //TODO: clean
+                        1 , total_cols_num + 1};
 		jobs_q.push(job);
 	}
 	//Last one gets the remainder:
@@ -93,10 +93,8 @@ void Game::_step(uint curr_gen) {
 	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
-	//while(!jobs_q.is_empty() && jobs_num > 0){}
-	while(!jobs_q.is_empty()){} //TODO: Need to change this cond, not thread safe!
+	while(jobs_num > 0){}
 	// Swap pointers between current and next field
-	//vector<vector<bool>> temp = vector<vector<bool>>(curr);
     bool_mat* temp = curr;
 	curr = next;
     next = temp;
@@ -110,19 +108,21 @@ void Game::_destroy_game(){
 
 	//Inject poison to kill the threads:
     job_t* poison_pill;
-	for(uint i = 0; i < m_thread_num; i++){
+	for(uint i = 0; i < m_threadpool.size(); i++){
         poison_pill = new job_t{0,0,0,0};
         jobs_q.push(poison_pill);
     }
     //Wait for them to die
-    while(!jobs_q.is_empty()){}
-
+    for(uint i = 0; i < m_threadpool.size(); i++){
+        m_threadpool[i]->join();
+    }
     //Free the memory
-	for(uint i = 0; i < m_thread_num; i++){
+	for(uint i = 0; i < m_threadpool.size(); i++){
 		delete m_threadpool[i];
 	}
 	delete curr;
 	delete next;
+    pthread_mutex_destroy(&jobs_lock);
 }
 
 /*--------------------------------------------------------------------------------
@@ -139,32 +139,22 @@ inline void Game::print_board(const char* header) {
 		if (header != NULL){
 			cout << "<------------" << header << "------------>" << endl;
 		}
-		
-		// TODO: Print the board
-		if(header == NULL){
-            for(uint i = 1 ; i < total_rows_num + 1; i++) {
-                cout << "|" ;
-                for (uint j = 1; j < total_cols_num + 1; j++) {
-                    cout << (*curr)[i][j];
-                }
-                cout << "|" << endl;
-            }
-            cout << "======================" << endl;
+		//Print the board
+		cout << u8"╔" << string(u8"═") * (total_cols_num) << u8"╗" << endl;
+		for (uint i = 1; i < total_rows_num + 1; ++i) {
+				cout << u8"║";
+				for (uint j = 1; j < total_cols_num + 1; ++j) {
+					cout << ((*curr)[i][j] ? u8"█" : u8"░");
+				}
+				cout << u8"║" << endl;
 		}
+		cout << u8"╚" << string(u8"═") * (total_cols_num)<< u8"╝" << endl;
+
 
 		// Display for GEN_SLEEP_USEC micro-seconds on screen 
 		if(interactive_on)
 			usleep(GEN_SLEEP_USEC);
 
-		/*	cout << u8"╔" << string(u8"═") * total_cols_num << u8"╗" << endl;
-			for (uint i = 1; i < total_rows_num + 1; ++i) {
-				cout << u8"║";
-				for (uint j = 1; j < total_cols_num + 1; ++j) {
-					cout << (curr[i][j] ? u8"█" : u8"░");
-				}
-				cout << u8"║" << endl;
-			}
-			cout << u8"╚" << string(u8"═") * total_cols_num << u8"╝" << endl;*/
 	}
 
 }
@@ -174,13 +164,12 @@ inline void Game::print_board(const char* header) {
  * */
 void Game::Worker::thread_workload(){
 	while(true) {
-		//if(!this->game_ptr->jobs_q.is_empty()) {
 			//Start polling the queue:
 			job_t *job = this->game_ptr->jobs_q.pop();
 			//Check for poison:
-			if(job->start_col+job->finish_col+job->start_row+job->finish_row == 0) {
+			if(job->start_col + job->finish_col == 0) {
                 delete job;
-			    break;//eat the poison and die
+			    return;//eat the poison and die
 			}
 			auto tile_start = std::chrono::system_clock::now();
 			//Job acquired. now start working you lazy worker! (ilya's side note: LOL)
@@ -215,13 +204,15 @@ void Game::Worker::thread_workload(){
 			}
 			//==========:WORK's DONE:=========//
 			auto tile_done = std::chrono::system_clock::now();
-			m_tile_hist->push_back(
-					(float) std::chrono::duration_cast<std::chrono::microseconds>(
-							tile_start - tile_done).count());
+
 			//Now to the next job!
+            pthread_mutex_lock(&this->game_ptr->jobs_lock);
 			this->game_ptr->jobs_num--;
+            this->game_ptr->m_tile_hist.push_back(
+                (float) std::chrono::duration_cast<std::chrono::microseconds>(
+                        tile_start - tile_done).count());
+            pthread_mutex_unlock(&this->game_ptr->jobs_lock);
 			delete job;
-		//}
 	}
 }
 

@@ -67,28 +67,30 @@ protected: // All members here are protected, instead of private for testing pur
     bool_mat *curr;
     bool_mat *next;
 
-	friend class Worker;
+    pthread_mutex_t jobs_lock;
+
+    PCQueue<job_t*> jobs_q;
+    int jobs_num;
+
 private:
+    /*
+     *  Worker class - extends the abstract class Thread
+     *  and implements the thread_workload function.
+     * */
 	class Worker :  public Thread {
 
 	private:
-		//bool_mat* curr;
-		//bool_mat* next;
-		//job_t job;
 		Game* game_ptr;
-        vector<float>* m_tile_hist;
+
 	public:
-		Worker(uint thread_id, Game* game, vector<float>* m_tile_hist_ptr)://, job_t job):
-				Thread::Thread(thread_id), game_ptr(game), m_tile_hist(m_tile_hist_ptr){};//, job(job){};
-		//Worker(uint thread_id, bool_mat* curr_ptr, bool_mat* next_ptr, job_t job):
-		//		Thread::Thread(thread_id), curr(curr_ptr), next(next_ptr), job(job){};
+		Worker(uint thread_id, Game* game):
+				Thread::Thread(thread_id), game_ptr(game){};
 
 	protected:
 		void thread_workload() override;
 
 	};
-	//vector<Worker*> workers;
-	PCQueue<job_t*> jobs_q;
-	int jobs_num;
+
+
 };
 #endif

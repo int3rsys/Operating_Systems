@@ -13,7 +13,6 @@ public:
         pthread_mutex_init(&main_lock,NULL);
         pthread_cond_init(&producer_finished,NULL);
         is_producer_inside = 0;
-        //q_size = 0;
     }
 
     ~PCQueue(){
@@ -32,7 +31,6 @@ public:
         }
         T res = q.front();
         q.pop();
-        //q_size--;
         pthread_mutex_unlock(&main_lock);
 
         return res;
@@ -47,7 +45,6 @@ public:
         pthread_mutex_lock(&main_lock);
 
         q.push(item);
-        //q_size++;
         is_producer_inside = 0;
 
         pthread_cond_broadcast(&producer_finished);
@@ -55,18 +52,13 @@ public:
         pthread_mutex_unlock(&main_lock);
 	}
 
-    bool is_empty(){
-	    //Need to lock?
-	    bool res = q.empty();
-        return res;
-	}
 private:
 	// Add your class members here
 	pthread_mutex_t main_lock;
-
 	pthread_cond_t producer_finished;
+
 	int is_producer_inside;
-    //int q_size;
+
 	std::queue<T> q;
 
 };
