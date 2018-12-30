@@ -11,6 +11,8 @@ Game::Game(game_params params){
     print_on = params.print_on;
 	jobs_num = 0;
     pthread_mutex_init(&jobs_lock,NULL);
+	pthread_mutex_init(&step_lock,NULL);
+	pthread_cond_init(&step_cond,NULL);
 
     vector<string> lines = utils::read_lines(params.filename);
 	vector<string> temp_line;
@@ -93,7 +95,11 @@ void Game::_step(uint curr_gen) {
 	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
-	while(jobs_num > 0){}
+	pthread_mutex_lock(&step_lock);
+	while(jobs_num > 0){
+	    pthread_cond_wait(&step_cond,&step_lock);
+	}
+    pthread_mutex_unlock(&step_lock);
 	// Swap pointers between current and next field
     bool_mat* temp = curr;
 	curr = next;
@@ -123,6 +129,8 @@ void Game::_destroy_game(){
 	delete curr;
 	delete next;
     pthread_mutex_destroy(&jobs_lock);
+	pthread_mutex_destroy(&step_lock);
+	pthread_cond_destroy(&step_cond);
 }
 
 /*--------------------------------------------------------------------------------
@@ -210,7 +218,10 @@ void Game::Worker::thread_workload(){
 			this->game_ptr->jobs_num--;
             this->game_ptr->m_tile_hist.push_back(
                 (float) std::chrono::duration_cast<std::chrono::microseconds>(
-                        tile_start - tile_done).count());
+                        tile_done - tile_start).count());
+            if(this->game_ptr->jobs_num <= 0){
+                pthread_cond_signal(&this->game_ptr->step_cond);
+            }
             pthread_mutex_unlock(&this->game_ptr->jobs_lock);
 			delete job;
 	}

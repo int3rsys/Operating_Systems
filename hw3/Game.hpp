@@ -68,6 +68,8 @@ protected: // All members here are protected, instead of private for testing pur
     bool_mat *next;
 
     pthread_mutex_t jobs_lock;
+    pthread_mutex_t step_lock;
+    pthread_cond_t step_cond;
 
     PCQueue<job_t*> jobs_q;
     int jobs_num;
