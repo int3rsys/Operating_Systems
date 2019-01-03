@@ -11,18 +11,19 @@ Game::Game(game_params params){
     print_on = params.print_on;
 	jobs_num = 0;
     pthread_mutex_init(&jobs_lock,NULL);
-	pthread_mutex_init(&step_lock,NULL);
+	//pthread_mutex_init(&step_lock,NULL);
 	pthread_cond_init(&step_cond,NULL);
 
     vector<string> lines = utils::read_lines(params.filename);
 	vector<string> temp_line;
 	total_rows_num = lines.size();
-	temp_line = utils::split(lines[0],' ');//TODO: Corner case for 0 lines
+	temp_line = utils::split(lines[0],' ');
 	total_cols_num = temp_line.size();
 	//effective threads number:
 	m_thread_num = (m_thread_num > total_rows_num) ? total_rows_num : m_thread_num;
 
 	//Initializing the vectors with '0':
+	//allocate with frame size + 2 (=false borders)
 	curr = new bool_mat(total_rows_num + 2);
 	next = new bool_mat(total_rows_num + 2);
 	for(uint i = 0 ; i < total_rows_num + 2; i++) {
@@ -95,11 +96,11 @@ void Game::_step(uint curr_gen) {
 	jobs_q.push(job);
 
 	// Wait for the workers to finish calculating
-	pthread_mutex_lock(&step_lock);
+	pthread_mutex_lock(&jobs_lock);
 	while(jobs_num > 0){
-	    pthread_cond_wait(&step_cond,&step_lock);
+	    pthread_cond_wait(&step_cond,&jobs_lock);
 	}
-    pthread_mutex_unlock(&step_lock);
+    pthread_mutex_unlock(&jobs_lock);
 	// Swap pointers between current and next field
     bool_mat* temp = curr;
 	curr = next;
@@ -129,7 +130,7 @@ void Game::_destroy_game(){
 	delete curr;
 	delete next;
     pthread_mutex_destroy(&jobs_lock);
-	pthread_mutex_destroy(&step_lock);
+	//pthread_mutex_destroy(&step_lock);
 	pthread_cond_destroy(&step_cond);
 }
 
